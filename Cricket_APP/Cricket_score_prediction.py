@@ -51,7 +51,7 @@ def main():
     """)
     
     # Load and train the model
-    data = load_data('final_data.csv')
+    data = load_data('Cricket_APP/final_data.csv')
     model = train_model(data)
 
     st.write("### Input Features for Prediction")
