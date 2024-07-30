@@ -13,7 +13,7 @@ def load_data(filepath):
     data = pd.read_csv(filepath)
     return data
 
-data = load_data('data/heart_failure_clinical_records.csv')
+data = load_data('heart_faliure_prediction/heart_failure_clinical_records.csv')
 
 X = data.drop('DEATH_EVENT', axis=1)
 y = data['DEATH_EVENT']
