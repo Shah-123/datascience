@@ -40,18 +40,17 @@ def train_model(df):
     return model
 
 def main():
-    # Set the page configuration
-    st.set_page_config(page_title="Cricket Runs Prediction", page_icon="🏏", layout="centered")
+    st.set_page_config(page_title="ODI Cricket Runs Prediction", page_icon="🏏", layout="centered")
     
     # App title and description
-    st.title("🏏 Cricket Runs Prediction App")
+    st.title("🏏 ODI Cricket Runs Prediction App")
     st.markdown("""
     Welcome to the Cricket Runs Prediction App! This tool uses machine learning to predict the number of runs 
     based on various match conditions. Provide the match details below to get started.
     """)
     
     # Load and train the model
-    data = load_data('Cricket_APP/final_data.csv')
+    data = load_data('final_data.csv')
     model = train_model(data)
 
     st.write("### Input Features for Prediction")
