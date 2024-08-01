@@ -13,7 +13,7 @@ from sklearn.metrics import mean_absolute_percentage_error, mean_absolute_error,
 # Function to load data
 @st.cache_data
 def load_data():
-    df = pd.read_csv('exams.csv')
+    df = pd.read_csv('Student_preformance/exams.csv')
     df['ethnicity'] = df['race/ethnicity']
     df = df.drop('race/ethnicity', axis=1)
     df['lunch'] = df['lunch'].str.replace('^free/', '', regex=True)
