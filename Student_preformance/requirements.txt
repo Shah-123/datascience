@@ -3,3 +3,6 @@ streamlit
 scikit-learn
 xgboost
 joblib
+seaborn
+numpy
+plotly
