@@ -1,6 +1,4 @@
-here's a README file for the "Cricket_APP" folder:
 
----
 
 # Cricket_APP
 
