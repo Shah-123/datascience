@@ -1,7 +1,7 @@
-pandas
-streamlit
-scikit-learn
-xgboost
-joblib
-numpy
+pandas,
+streamlit,
+scikit-learn,
+xgboost,
+joblib,
+numpy,
 
