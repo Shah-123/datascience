@@ -48,12 +48,8 @@ Contributions are welcome! If you'd like to add new notebooks, scripts, or impro
 4. Push to the branch (`git push origin feature/your-feature`)
 5. Open a pull request
 
-## 📄 License
-
-This repository is licensed under the [MIT License](LICENSE).
-
 ## 📫 Contact
 
 For questions or collaboration:
 - GitHub: [Shah-123](https://github.com/Shah-123)
-
+- Email : [Shahkar Ahamad Shah](shahkarahmad342@gmail.com)
