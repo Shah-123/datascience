@@ -12,7 +12,7 @@
   },
   "cross_validated": {
     "latency_ms": {
-      "mean": 3.18233,
+      "mean": 2.89181,
       "lo": null,
       "hi": null,
       "n": 88
@@ -144,13 +144,13 @@
       "n": 88
     },
     "latency_p50_ms": {
-      "mean": 2.73612,
+      "mean": 2.65297,
       "lo": null,
       "hi": null,
       "n": 88
     },
     "latency_p95_ms": {
-      "mean": 6.64357,
+      "mean": 5.49593,
       "lo": null,
       "hi": null,
       "n": 88
@@ -158,7 +158,7 @@
   },
   "in_sample": {
     "latency_ms": {
-      "mean": 2.89713,
+      "mean": 2.77957,
       "lo": null,
       "hi": null,
       "n": 88
@@ -290,13 +290,13 @@
       "n": 88
     },
     "latency_p50_ms": {
-      "mean": 2.57001,
+      "mean": 2.78106,
       "lo": null,
       "hi": null,
       "n": 88
     },
     "latency_p95_ms": {
-      "mean": 6.6422,
+      "mean": 3.22559,
       "lo": null,
       "hi": null,
       "n": 88
@@ -304,7 +304,7 @@
   },
   "random_retrieval_floor": {
     "latency_ms": {
-      "mean": 0.77778,
+      "mean": 0.82942,
       "lo": null,
       "hi": null,
       "n": 88
@@ -436,13 +436,13 @@
       "n": 88
     },
     "latency_p50_ms": {
-      "mean": 0.79332,
+      "mean": 0.80699,
       "lo": null,
       "hi": null,
       "n": 88
     },
     "latency_p95_ms": {
-      "mean": 1.06652,
+      "mean": 1.18355,
       "lo": null,
       "hi": null,
       "n": 88
@@ -451,7 +451,7 @@
   "ladder": {
     "1. Naive RAG: fixed 120-word chunks, BM25, top-3, always answers": {
       "latency_ms": {
-        "mean": 0.65817,
+        "mean": 0.72161,
         "lo": null,
         "hi": null,
         "n": 88
@@ -583,13 +583,13 @@
         "n": 88
       },
       "latency_p50_ms": {
-        "mean": 0.64606,
+        "mean": 0.69948,
         "lo": null,
         "hi": null,
         "n": 88
       },
       "latency_p95_ms": {
-        "mean": 0.83133,
+        "mean": 0.99385,
         "lo": null,
         "hi": null,
         "n": 88
@@ -597,7 +597,7 @@
     },
     "2. + chunking chosen by the procedure": {
       "latency_ms": {
-        "mean": 0.47057,
+        "mean": 0.52062,
         "lo": null,
         "hi": null,
         "n": 88
@@ -729,13 +729,13 @@
         "n": 88
       },
       "latency_p50_ms": {
-        "mean": 0.4573,
+        "mean": 0.49663,
         "lo": null,
         "hi": null,
         "n": 88
       },
       "latency_p95_ms": {
-        "mean": 0.76987,
+        "mean": 0.8085,
         "lo": null,
         "hi": null,
         "n": 88
@@ -743,7 +743,7 @@
     },
     "3. + retriever and top-k chosen by the procedure": {
       "latency_ms": {
-        "mean": 3.49587,
+        "mean": 2.58725,
         "lo": null,
         "hi": null,
         "n": 88
@@ -875,13 +875,13 @@
         "n": 88
       },
       "latency_p50_ms": {
-        "mean": 2.57423,
+        "mean": 2.51482,
         "lo": null,
         "hi": null,
         "n": 88
       },
       "latency_p95_ms": {
-        "mean": 7.12504,
+        "mean": 3.27427,
         "lo": null,
         "hi": null,
         "n": 88
@@ -889,7 +889,7 @@
     },
     "4. + abstention thresholds tuned": {
       "latency_ms": {
-        "mean": 3.6632,
+        "mean": 2.9243,
         "lo": null,
         "hi": null,
         "n": 88
@@ -1021,13 +1021,13 @@
         "n": 88
       },
       "latency_p50_ms": {
-        "mean": 2.58964,
+        "mean": 2.42466,
         "lo": null,
         "hi": null,
         "n": 88
       },
       "latency_p95_ms": {
-        "mean": 7.00783,
+        "mean": 6.6448,
         "lo": null,
         "hi": null,
         "n": 88
@@ -1035,7 +1035,7 @@
     },
     "5. + answer-type gate = final system": {
       "latency_ms": {
-        "mean": 3.16598,
+        "mean": 3.17713,
         "lo": null,
         "hi": null,
         "n": 88
@@ -1167,13 +1167,13 @@
         "n": 88
       },
       "latency_p50_ms": {
-        "mean": 2.51258,
+        "mean": 2.5915,
         "lo": null,
         "hi": null,
         "n": 88
       },
       "latency_p95_ms": {
-        "mean": 7.05469,
+        "mean": 6.63438,
         "lo": null,
         "hi": null,
         "n": 88

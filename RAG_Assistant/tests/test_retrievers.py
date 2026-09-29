@@ -68,3 +68,14 @@ def test_dense_retriever_with_stub_embeddings(chunks):
 def test_build_retriever_rejects_unknown_names():
     with pytest.raises(ValueError):
         build_retriever("nonsense")
+
+
+def test_ui_retriever_choices_put_the_evaluated_retriever_first():
+    from rag_assistant.retrievers import retriever_choices
+    tuned = "hybrid:bm25+lsa+glove"
+    with_glove = retriever_choices(tuned, glove_ok=True)
+    assert with_glove[0] == tuned and len(set(with_glove)) == len(with_glove)
+    # without the vectors the tuned retriever is unavailable: fall back to bm25, never offer something unusable
+    no_glove = retriever_choices(tuned, glove_ok=False)
+    assert no_glove[0] == "bm25" and not any("glove" in o for o in no_glove)
+    assert retriever_choices("tfidf", glove_ok=False)[0] == "tfidf"

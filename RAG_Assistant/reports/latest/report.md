@@ -24,11 +24,13 @@ Nested 5-fold cross-validation: in each fold the chunking, retriever, top-k and 
 | Citation precision | 0.90 (0.79-0.98) | Cited chunks that really contain the evidence |
 | Token F1 vs reference | 0.59 (0.51-0.68) | Word overlap with the reference answer (answered questions only) |
 
-Latency (median / p95): 2.7 ms / 6.6 ms per question, retrieval and generation included.
+Latency (median / p95): 2.7 ms / 5.5 ms per question, retrieval and generation included.
 
 **How to read this.**
 - Retrieval is strong: the gold evidence is in the top 5 for 98% of answerable questions.
 - The extractive generator is the bottleneck: it gets 44% of answerable questions right and correctly refuses 85% of unanswerable ones.
+- Refusals concentrate where the wording differs from the handbook or an answer needs two passages: paraphrase and multi-hop questions are almost all refused (see the table below). Retrieval found the evidence for nearly all of them, so this is the gap an LLM generator is meant to close, not a retrieval problem.
+- The operating point comes from maximising the balanced score, which weighs refusing correctly as much as answering correctly. If a wrong answer is cheaper than a refusal in your setting, lower the threshold (section 5).
 - Scoring the same configuration on the questions it was tuned on gives balanced score 0.67 vs the honest 0.64: tuning on ~90 questions inflates results by +0.03. That is why the headline is cross-validated.
 - A retriever that returns random chunks scores balanced 0.52: it "wins" abstention only by refusing almost everything, which is why abstention accuracy is never reported alone.
 
@@ -42,8 +44,8 @@ Latency (median / p95): 2.7 ms / 6.6 ms per question, retrieval and generation i
 | Paraphrase | 20 | 1 | 0 | 0 | 0 | 18 | 1 |
 | Conditional | 12 | 8 | 1 | 0 | 0 | 3 | 0 |
 | Multi-hop | 10 | 1 | 0 | 0 | 0 | 9 | 0 |
-| Unanswerable (near-miss) | 16 | 12 | 0 | 0 | 4 | 0 | 0 |
-| Unanswerable (off-topic) | 10 | 10 | 0 | 0 | 0 | 0 | 0 |
+| Near-miss (unanswerable) | 16 | 12 | 0 | 0 | 4 | 0 | 0 |
+| Off-topic (unanswerable) | 10 | 10 | 0 | 0 | 0 | 0 | 0 |
 
 Failure taxonomy: a *retrieval miss* means the gold evidence was not in the passages the generator saw; the other failures happened **with the evidence in hand**, so they are generator faults. Selected failures (most serious first):
 
@@ -66,31 +68,38 @@ Full per-question results: [`per_question.csv`](per_question.csv).
 
 ![Component ladder](figures/component_ladder.png)
 
-| Step | Answer acc. | Abstention acc. | Hallucination rate | Balanced | Change in hallucination rate vs previous step (paired 95% CI) |
-|---|---|---|---|---|---|
-| 1. Naive RAG: fixed 120-word chunks, BM25, top-3, always answers | 0.61 (0.48-0.73) | 0.23 (0.08-0.38) | 0.23 (0.15-0.31) | 0.42 (0.32-0.53) |  |
-| 2. + chunking chosen by the procedure | 0.63 (0.52-0.74) | 0.23 (0.08-0.38) | 0.23 (0.15-0.31) | 0.43 (0.33-0.53) | +0.00 (+0.00 to +0.00) |
-| 3. + retriever and top-k chosen by the procedure | 0.60 (0.47-0.73) | 0.23 (0.08-0.38) | 0.23 (0.15-0.31) | 0.41 (0.31-0.52) | +0.00 (+0.00 to +0.00) |
-| 4. + abstention thresholds tuned | 0.45 (0.32-0.58) | 0.85 (0.69-0.96) | 0.05 (0.01-0.09) | 0.65 (0.55-0.73) | -0.18 (-0.26 to -0.10) |
-| 5. + answer-type gate = final system | 0.44 (0.31-0.56) | 0.85 (0.69-0.96) | 0.05 (0.01-0.09) | 0.64 (0.54-0.73) | +0.00 (+0.00 to +0.00) |
+| Step | Answer acc. | Abstention acc. | Hallucination rate | Balanced | Δ hallucination vs previous step | Δ answer acc. vs previous step |
+|---|---|---|---|---|---|---|
+| 1. Naive RAG: fixed 120-word chunks, BM25, top-3, always answers | 0.61 (0.48-0.73) | 0.23 (0.08-0.38) | 0.23 (0.15-0.31) | 0.42 (0.32-0.53) |  |  |
+| 2. + chunking chosen by the procedure | 0.63 (0.52-0.74) | 0.23 (0.08-0.38) | 0.23 (0.15-0.31) | 0.43 (0.33-0.53) | +0.00 (+0.00 to +0.00) | +0.02 (-0.03 to +0.06) |
+| 3. + retriever and top-k chosen by the procedure | 0.60 (0.47-0.73) | 0.23 (0.08-0.38) | 0.23 (0.15-0.31) | 0.41 (0.31-0.52) | +0.00 (+0.00 to +0.00) | -0.03 (-0.08 to +0.00) |
+| 4. + abstention thresholds tuned | 0.45 (0.32-0.58) | 0.85 (0.69-0.96) | 0.05 (0.01-0.09) | 0.65 (0.55-0.73) | -0.18 (-0.26 to -0.10) | -0.15 (-0.26 to -0.03) |
+| 5. + answer-type gate = final system | 0.44 (0.31-0.56) | 0.85 (0.69-0.96) | 0.05 (0.01-0.09) | 0.64 (0.54-0.73) | +0.00 (+0.00 to +0.00) | -0.02 (-0.05 to +0.00) |
+
+Deltas are paired over the same questions with 95% bootstrap CIs. What they show:
+
+- Step 4 changes hallucination rate -0.18 (paired 95% CI -0.26 to -0.10) and answer accuracy -0.15 (paired 95% CI -0.26 to -0.03).
+- Steps 2, 3, 5 make no statistically detectable difference to hallucination rate or answer accuracy (paired CIs include 0).
 
 ## 4. Retrieval ablation (descriptive, all 62 answerable questions)
 
 ![Retrieval by question type](figures/retrieval_by_type.png)
 
-Best chunking per retriever, sorted by MRR:
+All retrievers at the same chunking (`structure-90w`), sorted by MRR:
 
-| Retriever | Chunking | Hit@1 | Hit@5 | Recall@5 | MRR | nDCG@5 |
-|---|---|---|---|---|---|---|
-| hybrid:bm25+lsa+glove | structure-140w | 0.89 | 0.98 | 0.98 | 0.92 | 0.93 |
-| bm25 | structure-140w | 0.85 | 0.97 | 0.97 | 0.90 | 0.91 |
-| hybrid:bm25+tfidf | structure-140w | 0.85 | 0.97 | 0.97 | 0.90 | 0.91 |
-| hybrid:bm25+lsa | structure-140w | 0.85 | 0.97 | 0.97 | 0.90 | 0.91 |
-| hybrid:bm25+glove | structure-140w | 0.85 | 0.95 | 0.95 | 0.90 | 0.90 |
-| tfidf | fixed-120w + heading | 0.79 | 0.98 | 0.98 | 0.88 | 0.89 |
-| lsa | fixed-120w + heading | 0.79 | 0.98 | 0.98 | 0.88 | 0.89 |
-| glove | structure-140w | 0.68 | 0.94 | 0.91 | 0.78 | 0.79 |
-| random | structure-90w | 0.00 | 0.05 | 0.05 | 0.02 | 0.02 |
+| Retriever | Hit@1 | Hit@5 | Recall@5 | MRR | nDCG@5 |
+|---|---|---|---|---|---|
+| hybrid:bm25+lsa+glove | 0.84 | 0.94 | 0.94 | 0.88 | 0.88 |
+| bm25 | 0.79 | 0.94 | 0.94 | 0.86 | 0.87 |
+| hybrid:bm25+tfidf | 0.79 | 0.94 | 0.94 | 0.86 | 0.87 |
+| hybrid:bm25+lsa | 0.79 | 0.94 | 0.94 | 0.86 | 0.87 |
+| hybrid:bm25+glove | 0.81 | 0.95 | 0.94 | 0.86 | 0.87 |
+| tfidf | 0.77 | 0.94 | 0.93 | 0.85 | 0.86 |
+| lsa | 0.77 | 0.94 | 0.93 | 0.85 | 0.86 |
+| glove | 0.66 | 0.89 | 0.86 | 0.76 | 0.76 |
+| random | 0.00 | 0.05 | 0.05 | 0.02 | 0.02 |
+
+On the 20 paraphrased questions the best embedding hybrid (`hybrid:bm25+glove`) reaches MRR 0.73 vs 0.62 for BM25; on the other 42 answerable questions BM25 reaches 0.98 vs 0.92. The gaps are small relative to the sample size, but they are consistent with dense signals helping when the words differ and adding noise when they match.
 
 Chunking comparison for `hybrid:bm25+lsa+glove`:
 

@@ -13,16 +13,18 @@ from rag_assistant.embeddings import glove_available
 from rag_assistant.evaluation.support import score_answer
 from rag_assistant.ingest import load_corpus
 from rag_assistant.llm import LLMError, detect_provider, make_llm
+from rag_assistant.retrievers import retriever_choices
 from rag_assistant.pipeline import load_best_config
 from rag_assistant.types import REFUSAL_TEXT
 
 load_env_file()
 st.set_page_config(page_title="Handbook Assistant", page_icon="📘", layout="wide")
 
+# Three the offline generator answers, one paraphrase it cannot (try LLM mode), two it should refuse.
 EXAMPLES = [
     "What is the late payment fee?",
-    "How do I get a refund if I drop a class in week 4?",
-    "Until which week can a graduate student withdraw with a W?",
+    "How much is the housing deposit?",
+    "What is the tuition refund if I withdraw in week 4?",
     "How often must I change my campus network login secret?",
     "Does the Student Health Center offer dental care?",
     "Who won the 2022 FIFA World Cup?",
@@ -42,13 +44,6 @@ def get_pipeline(retriever: str, top_k: int, coverage: float, use_llm: bool) -> 
     return RAGPipeline(corpus(), cfg, make_llm() if use_llm else None)
 
 
-def retriever_options() -> list[str]:
-    opts = ["bm25", "tfidf", "hybrid:bm25+lsa"]
-    if glove_available():
-        opts += ["glove", "hybrid:bm25+glove"]
-    return opts
-
-
 best = load_best_config()
 provider = detect_provider()
 
@@ -62,8 +57,11 @@ with st.sidebar:
         use_llm = False
     elif use_llm:
         st.caption(f"Provider: {provider}")
-    opts = retriever_options()
-    retriever = st.selectbox("Retriever", opts, index=opts.index(best.retriever) if best.retriever in opts else 0)
+    if "glove" in best.retriever and not glove_available():
+        st.warning(f"The tuned retriever `{best.retriever}` needs GloVe vectors, so `bm25` is used instead and answers may differ. "
+                   "Run `python -m rag_assistant fetch-embeddings` to enable it.")
+    opts = retriever_choices(best.retriever, glove_available())
+    retriever = st.selectbox("Retriever", opts, index=0, help="The first option is the one the evaluation report measured.")
     top_k = st.slider("Passages retrieved (top-k)", 1, 10, best.top_k)
     coverage = st.slider("Abstention threshold", 0.0, 1.0, float(best.min_coverage), 0.05, disabled=use_llm,
                          help="Extractive generator only: the share of the question's key terms that must be found before it answers.")
@@ -78,9 +76,11 @@ tab_ask, tab_eval, tab_corpus = st.tabs(["Ask", "How well does it work?", "Corpu
 # ----------------------------------------------------------------------------------- ask
 with tab_ask:
     st.write("**Try an example**")
+    st.caption("The fourth example is worded differently from the handbook: the offline generator refuses it, an LLM should not. "
+               "The last two are unanswerable and should be refused.")
     cols = st.columns(3)
     for i, ex in enumerate(EXAMPLES):
-        if cols[i % 3].button(ex, key=f"ex{i}", use_container_width=True):
+        if cols[i % 3].button(ex, key=f"ex{i}"):
             st.session_state["question"] = ex
     with st.form("ask_form"):
         question = st.text_input("Your question", key="question", placeholder="e.g. How much is the housing deposit?")
@@ -128,7 +128,7 @@ with tab_ask:
             st.dataframe(pd.DataFrame([{
                 "rank": h.rank, "score": round(h.score, 4), "document": h.chunk.doc_title, "section": h.chunk.heading,
                 "cited": "✓" if h.chunk.chunk_id in ans.citations else "", "text": h.chunk.text} for h in ans.contexts]),
-                hide_index=True, use_container_width=True)
+                hide_index=True)
 
 # ----------------------------------------------------------------------------------- evaluation
 with tab_eval:
@@ -161,13 +161,13 @@ with tab_eval:
                               ("abstention_tradeoff.png", "The answer-versus-refuse trade-off"),
                               ("retrieval_by_type.png", "Retrieval quality by question type")):
             if (figs / name).exists():
-                st.image(str(figs / name), caption=caption, use_container_width=True)
+                st.image(str(figs / name), caption=caption)
         csv = REPORT_DIR / "per_question.csv"
         if csv.exists():
             df = pd.read_csv(csv)
             st.subheader("Every question")
             outcome = st.multiselect("Filter by outcome", sorted(df["outcome"].unique()))
-            st.dataframe(df[df["outcome"].isin(outcome)] if outcome else df, hide_index=True, use_container_width=True)
+            st.dataframe(df[df["outcome"].isin(outcome)] if outcome else df, hide_index=True)
         report = REPORT_DIR / "report.md"
         if report.exists():
             with st.expander("Full written report"):

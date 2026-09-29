@@ -167,7 +167,7 @@ def fig_tradeoff(study: Study, path: Path) -> None:
     ax.set_ylabel("Share of questions", fontsize=9, color=MUTED)
     handles, labels = ax.get_legend_handles_labels()
     fig.legend(handles, labels, loc="lower center", ncol=2, frameon=False, fontsize=9, labelcolor=INK2, bbox_to_anchor=(0.44, 0.0))
-    _titles(fig, "Refusing more unanswerable questions means refusing more answerable ones",
+    _titles(fig, "Caution is paid for in correct answers",
             "Offline extractive generator, all questions, other settings fixed. There is no free lunch on this curve.")
     _save(fig, path)
 
@@ -307,7 +307,7 @@ def retrieval_sentence(study: Study) -> str:
     b = stat(best)
     return (f"On the {b[2]} paraphrased questions the best embedding hybrid (`{best}`) reaches MRR {b[0]:.2f} vs {base[0]:.2f} for BM25; "
             f"on the other {b[3]} answerable questions BM25 reaches {base[1]:.2f} vs {b[1]:.2f}. "
-            "The gaps are small relative to the sample size, but they point the same way: dense signals help when the words differ and add noise when they match.")
+            "The gaps are small relative to the sample size, but they are consistent with dense signals helping when the words differ and adding noise when they match.")
 
 
 def build_report(study: Study, sections: list[Section], items: list[EvalItem], out_dir: Path, llm_summary: str | None = None) -> Path:

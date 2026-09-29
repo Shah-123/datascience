@@ -12,9 +12,36 @@ It runs **fully offline** (no API key, no model download) and plugs into **Anthr
 
 ![Answer with sources and a live faithfulness check](docs/app_answer.png)
 
+*The web app: an answer, a claim-by-claim faithfulness check, and the cited source. Unanswerable questions are refused (`docs/app_refusal.png`); the second tab shows the evaluation (`docs/app_evaluation.png`).*
+
 ## Results at a glance
 
-<!-- RESULTS -->
+Offline extractive generator (no LLM), **nested 5-fold cross-validation over 88 questions**, 95% bootstrap CIs. Every question is scored by a configuration that never saw it.
+
+| | Value | |
+|---|---|---|
+| Gold evidence in the top 5 (Hit@5) | **0.98** (0.95-1.00) | retrieval is not the bottleneck |
+| Mean reciprocal rank | 0.92 (0.85-0.97) | |
+| Answer accuracy (answerable questions) | **0.44** (0.31-0.56) | the generator is |
+| Refuses correctly (unanswerable questions) | **0.85** (0.69-0.96) | |
+| Hallucination rate (all questions) | **0.05** (0.01-0.09) | vs **0.23** for a naive RAG that always answers |
+| Unfaithful answers | 0.00 | by construction: the offline generator can only quote |
+
+**What the evaluation found** (details, tables and figures in the report):
+
+1. **Retrieval is fine; the generator is the bottleneck.** The evidence is retrieved for 98% of answerable questions, but the offline generator answers
+   only 44%: it refuses 18 of 20 paraphrased and 9 of 10 multi-hop questions even though it holds the evidence. That is the gap an LLM generator exists to close.
+2. **Abstention is the one design decision with a measurable effect.** Adding it cuts the hallucination rate by 0.18 (paired 95% CI -0.26 to -0.10) and
+   costs 0.15 of answer accuracy (-0.26 to -0.03). Chunking, retriever and top-k choices make no statistically detectable difference at this sample size. There is no free lunch: the report plots the whole trade-off curve.
+3. **Embeddings trade off, they do not simply win.** A GloVe hybrid lifts MRR on paraphrased questions (0.62 to 0.73) and lowers it slightly on the rest (0.98 to 0.92).
+4. **Honest evaluation changed the answer.** In an earlier iteration, thresholds tuned on a fixed dev split scored 0.75 balanced on dev and 0.50 on test.
+   That is why the headline is cross-validated.
+5. **The evaluator was checked, too.** The faithfulness scorer is 80% accurate on 30 hand-labelled answers (its known blind spots are listed), and it caught
+   23 of 25 deliberately injected faults with 0 false alarms on untouched answers. Writing the tests exposed two real bugs in the scorer itself
+   (a determiner "No..." treated as a negation, and truncated quotes flagged as unfaithful); both are fixed and covered by tests.
+
+![Where questions succeed and fail](reports/latest/figures/outcomes_by_type.png)
+
 
 Full write-up with every table and figure: [`reports/latest/report.md`](reports/latest/report.md).
 
@@ -57,7 +84,8 @@ streamlit run app.py                                   # the web app
 python -m rag_assistant ask "What is the late payment fee?"
 python -m rag_assistant chat                           # interactive
 python -m rag_assistant eval                           # score the tuned pipeline on the golden set
-python -m rag_assistant study                          # nested CV + ablations + full report (a few minutes)
+python -m rag_assistant study                          # nested CV + ablations + full report (about 10 minutes)
+python -m rag_assistant report                         # re-render the report and figures from the last study, in seconds
 python -m pytest -q                                    # tests
 python -m rag_assistant check-data                     # golden set vs corpus integrity
 ```

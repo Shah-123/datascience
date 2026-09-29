@@ -194,3 +194,14 @@ def build_retriever(spec: str = "hybrid", add_heading: bool = True) -> Retriever
     if spec in table:
         return table[spec](add_heading=add_heading)
     raise ValueError(f"Unknown retriever {spec!r}; choose from {RETRIEVER_NAMES}")
+
+
+def retriever_choices(tuned: str, glove_ok: bool) -> list[str]:
+    """Retrievers a UI can offer. The tuned one (what the evaluation measured) comes first when it is usable."""
+    opts = ["bm25", "tfidf", "hybrid:bm25+lsa"]
+    if glove_ok:
+        opts += ["glove", "hybrid:bm25+glove", "hybrid:bm25+lsa+glove"]
+    if tuned in opts:
+        opts.remove(tuned)
+        opts.insert(0, tuned)
+    return opts

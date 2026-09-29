@@ -50,3 +50,11 @@ def test_choosing_llm_without_a_key_explains_and_falls_back():
     at.radio[0].set_value("LLM").run()
     assert not at.exception
     assert any("No LLM provider is configured" in e.value for e in at.error)
+
+
+def test_missing_tuned_retriever_is_announced_not_silently_replaced(monkeypatch):
+    monkeypatch.setenv("RAG_GLOVE_PATH", "/nonexistent/glove.gz")
+    at = AppTest.from_file(APP, default_timeout=120).run()
+    assert not at.exception
+    assert any("needs GloVe vectors" in w.value for w in at.warning)
+    assert at.sidebar.selectbox[0].value == "bm25"
