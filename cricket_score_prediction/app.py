@@ -1,105 +1,62 @@
 import streamlit as st
-import pandas as pd
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
-from xgboost import XGBRegressor
-import joblib
 
-# Load the sample data to fit the model initially
-def load_data(filepath):
-    df = pd.read_csv(filepath)
-    return df 
+import cricket_model as cm
 
-def train_model(df):
-    # Separate features and target variable
-    X = df.drop(['runs_off_bat_x'], axis=True)
-    y = df['runs_off_bat_x']
+st.set_page_config(page_title="ODI Score Predictor", page_icon="🏏", layout="centered")
 
-    # Define categorical and numeric columns
-    categorical_columns = ['venue', 'batting_team', 'bowling_team']
-    numeric_columns = ['balls_left', 'wicket_left', 'Current_Score', 'Crr', 'last_five']
 
-    # Preprocessing for numerical data (scaling) and categorical data (one-hot encoding)
-    preprocessor = ColumnTransformer(
-        transformers=[
-            ('num', StandardScaler(), numeric_columns),
-            ('cat', OneHotEncoder(sparse_output=False), categorical_columns)
-        ],
-        remainder='drop'
-    )
+@st.cache_resource(show_spinner="Loading model (the first run trains it, about 10 seconds)...")
+def get_bundle():
+    return cm.load_or_train()
 
-    # Create a pipeline that combines preprocessing and model training
-    model = Pipeline(steps=[
-        ('preprocessor', preprocessor),
-        ('regressor', XGBRegressor())
-    ])
-
-    # Fit the model
-    model.fit(X, y)
-    return model
 
 def main():
-    st.set_page_config(page_title="ODI Cricket Runs Prediction", page_icon="🏏", layout="centered")
-    
-    # App title and description
-    st.title("🏏 ODI Cricket Runs Prediction App")
-    st.markdown("""
-    Welcome to the Cricket Runs Prediction App! This tool uses machine learning to predict the number of runs 
-    based on various match conditions. Provide the match details below to get started.
-    """)
-    
-    # Load and train the model
-    data = load_data('Cricket_APP/final_data.csv')
-    model = train_model(data)
+    st.title("🏏 ODI First-Innings Score Predictor")
+    st.markdown(
+        "Predicts the final first-innings score (runs off the bat) from the current match situation. "
+        "Trained on ball-by-ball ODI data for the top 10 teams. On innings it never saw in training, "
+        "the model's average error is about **30 runs**, compared with 42 runs for the usual run-rate projection."
+    )
+    bundle = get_bundle()
 
-    st.write("### Input Features for Prediction")
+    c1, c2, c3 = st.columns(3)
+    venue = c1.selectbox("Venue", bundle["venues"])
+    batting_team = c2.selectbox("Batting team", bundle["teams"])
+    bowling_options = [t for t in bundle["teams"] if t != batting_team]
+    bowling_team = c3.selectbox("Bowling team", bowling_options)
 
-    # Organize input features into columns for better layout
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        venue = st.selectbox("Venue", data['venue'].unique())
-    with col2:
-        batting_team = st.selectbox("Batting Team", data['batting_team'].unique())
-    with col3:
-        bowling_team = st.selectbox("Bowling Team", data['bowling_team'].unique())
+    c1, c2, c3 = st.columns(3)
+    overs = c1.number_input("Overs completed", min_value=5, max_value=49, value=25, step=1)
+    balls = c2.number_input("Balls into current over", min_value=0, max_value=5, value=0, step=1)
+    wickets_fallen = c3.number_input("Wickets fallen", min_value=0, max_value=9, value=3, step=1)
 
-    col4, col5, col6 = st.columns(3)
-    with col4:
-        balls_left = st.number_input("Balls Left", min_value=0, max_value=300, step=1)
-    with col5:
-        wicket_left = st.number_input("Wickets Left", min_value=0, max_value=10, step=1)
-    with col6:
-        Current_Score = st.number_input("Current Score", min_value=0, max_value=500, step=1)
+    c1, c2 = st.columns(2)
+    current_score = c1.number_input("Current score", min_value=0, max_value=450, value=130, step=1)
+    last_five = c2.number_input("Runs in the last 5 overs", min_value=0, max_value=150, value=30, step=1)
 
-    col7, col8 = st.columns(2)
-    with col7:
-        Crr = st.number_input("Current Run Rate (CRR)", min_value=0.0, step=0.1)
-    with col8:
-        last_five = st.number_input("Runs in Last Five Overs", min_value=0, max_value=100, step=1)
+    balls_bowled = overs * 6 + balls
+    if last_five > current_score:
+        st.warning("Runs in the last 5 overs can't be more than the current score.")
+        st.stop()
 
-    # Prepare the user input for prediction
-    user_input = pd.DataFrame({
-        'venue': [venue],
-        'batting_team': [batting_team],
-        'bowling_team': [bowling_team],
-        'balls_left': [balls_left],
-        'wicket_left': [wicket_left],
-        'Current_Score': [Current_Score],
-        'Crr': [Crr],
-        'last_five': [last_five]
-    })
+    features = cm.make_input(
+        venue, batting_team, bowling_team,
+        balls_left=cm.BALLS_PER_INNINGS - balls_bowled,
+        wickets_left=10 - wickets_fallen,
+        current_score=current_score,
+        last_five=last_five,
+    )
+    if st.button("Predict final score", type="primary"):
+        predicted = max(float(bundle["model"].predict(features[cm.FEATURES])[0]), current_score)
+        projection = float(cm.run_rate_projection(features)[0])
+        c1, c2 = st.columns(2)
+        c1.metric("Predicted final score", f"{predicted:.0f}", help="Typical error is about ±30 runs")
+        c2.metric("Run-rate projection", f"{projection:.0f}", help="Current score + current run rate × overs left")
+        st.caption(f"Current run rate: {features['current_run_rate'].iloc[0]:.2f}")
 
-    # Predict runs based on user input
-    if st.button("Predict Runs"):
-        prediction = model.predict(user_input)
-        st.success(f"Predicted Runs: **{int(prediction[0])}**")
+    st.markdown("---")
+    st.caption("Scores are runs off the bat and exclude extras. Treat the prediction as a guide, not a certainty.")
 
-    # Footer
-    st.markdown("""
-    ---
-    **Note:** This prediction is based on historical data and machine learning algorithms. Use it as a guide and enjoy the game!
-    """)
 
 if __name__ == "__main__":
     main()
