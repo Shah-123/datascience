@@ -1,0 +1,26 @@
+{
+  "hit@5": {
+    "min": 0.9
+  },
+  "recall@5": {
+    "min": 0.9
+  },
+  "mrr": {
+    "min": 0.84
+  },
+  "answer_accuracy": {
+    "min": 0.37
+  },
+  "abstention_accuracy": {
+    "min": 0.8
+  },
+  "balanced_score": {
+    "min": 0.59
+  },
+  "hallucination_rate": {
+    "max": 0.11
+  },
+  "unfaithful_rate": {
+    "max": 0.08
+  }
+}

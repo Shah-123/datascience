@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import pickle
 import sys
 from pathlib import Path
 
@@ -90,7 +91,13 @@ def cmd_eval(args) -> int:
     if args.split in ("all", "dev"):
         print("  note: the selected config was tuned on these questions - use `study` for an unbiased estimate.")
     if args.gate:
-        failures = check_gates(summary, load_gates(args.gate))
+        try:
+            gates = load_gates(args.gate)
+        except (OSError, ValueError) as exc:
+            print(f"error: cannot read the quality-gate file {args.gate} ({exc}). Run `python -m rag_assistant study` to create it.",
+                  file=sys.stderr)
+            return 2
+        failures = check_gates(summary, gates)
         if failures:
             print("QUALITY GATE FAILED:\n  - " + "\n  - ".join(failures))
             return 1
@@ -113,10 +120,26 @@ def cmd_study(args) -> int:
     if llm_md.exists():
         llm_summary = "See [`../eval_llm/summary.md`](../eval_llm/summary.md) for the LLM run on the same questions."
     report = build_report(study, sections, items, out, llm_summary)
+    (out / "study.pkl").write_bytes(pickle.dumps(study))  # dev cache for `report`; git-ignored
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     BEST_CONFIG.write_text(json.dumps(study.best.to_dict(), indent=2), encoding="utf-8")
     GATES.write_text(json.dumps(make_gates(study.in_sample.summary(n_boot=0)), indent=2), encoding="utf-8")
     print(f"wrote {report}\nwrote {BEST_CONFIG}\nwrote {GATES}")
+    return 0
+
+
+def cmd_report(args) -> int:
+    """Re-render the report and figures from the last `study` run without recomputing it."""
+    from .evaluation import load_golden
+    from .evaluation.report import build_report
+
+    out = Path(args.out)
+    cache = out / "study.pkl"
+    if not cache.exists():
+        print(f"no cached study at {cache}; run `python -m rag_assistant study` first", file=sys.stderr)
+        return 2
+    study = pickle.loads(cache.read_bytes())
+    print(f"wrote {build_report(study, load_corpus(args.corpus), load_golden(args.golden, split='all'), out)}")
     return 0
 
 
@@ -187,6 +210,8 @@ def main(argv: list[str] | None = None) -> int:
     p.set_defaults(fn=cmd_eval)
     p = sub.add_parser("study", help="nested cross-validation, ablations and the full report")
     p.add_argument("--out", default=str(REPORTS_DIR / "latest")); p.set_defaults(fn=cmd_study)
+    p = sub.add_parser("report", help="re-render reports/latest from the cached study (no recomputation)")
+    p.add_argument("--out", default=str(REPORTS_DIR / "latest")); p.set_defaults(fn=cmd_report)
     sub.add_parser("check-data", help="verify the golden set against the corpus").set_defaults(fn=cmd_check_data)
     p = sub.add_parser("calibrate", help="measure the faithfulness scorer against hand labels")
     p.add_argument("--threshold", type=float, default=0.75); p.set_defaults(fn=cmd_calibrate)

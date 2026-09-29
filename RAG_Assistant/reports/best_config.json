@@ -1,0 +1,16 @@
+{
+  "chunk": {
+    "strategy": "structure",
+    "max_words": 140,
+    "overlap": 1,
+    "add_heading": true
+  },
+  "retriever": "hybrid:bm25+lsa+glove",
+  "top_k": 5,
+  "generator": "extractive",
+  "min_coverage": 0.7,
+  "max_sentences": 3,
+  "heading_weight": 0.5,
+  "min_primary": 0.5,
+  "type_gate": true
+}

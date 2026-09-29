@@ -56,3 +56,14 @@ def test_eval_writes_outputs_and_gate_can_fail(tmp_path, capsys):
 def test_llm_models_needs_an_openai_compatible_provider():
     with pytest.raises(SystemExit):
         main(["llm-models"])
+
+
+def test_missing_gate_file_is_a_clear_error_not_a_traceback(tmp_path, capsys):
+    code = main(["eval", "--config", "default", "--split", "test", "--out", str(tmp_path / "o"), "--gate", str(tmp_path / "nope.json")])
+    assert code == 2
+    assert "cannot read the quality-gate file" in capsys.readouterr().err
+
+
+def test_report_without_a_cached_study_explains_what_to_do(tmp_path, capsys):
+    assert main(["report", "--out", str(tmp_path)]) == 2
+    assert "run `python -m rag_assistant study` first" in capsys.readouterr().err

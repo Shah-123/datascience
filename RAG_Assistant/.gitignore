@@ -10,3 +10,4 @@ __pycache__/
 .cache/
 # downloaded embedding weights live in ~/.cache/rag_assistant, but never commit a stray copy
 *.gz
+*.pkl

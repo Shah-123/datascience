@@ -4,6 +4,7 @@ from __future__ import annotations
 import csv
 import json
 import math
+import textwrap
 from datetime import date
 from pathlib import Path
 
@@ -13,7 +14,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
 from ..ingest import Section, chunk_sections  # noqa: E402
-from .ablation import LADDER_LABELS, Study, paired_delta  # noqa: E402
+from .ablation import DEFAULT_CHUNK, LADDER_LABELS, Study, paired_delta  # noqa: E402
 from .dataset import TYPES, EvalItem  # noqa: E402
 from .harness import EvalRun  # noqa: E402
 
@@ -23,7 +24,7 @@ BLUE, ORANGE, AQUA, YELLOW, MAGENTA, GREEN = "#2a78d6", "#eb6834", "#1baf7a", "#
 
 TYPE_LABELS = {
     "factual": "Factual", "paraphrase": "Paraphrase", "conditional": "Conditional", "multi_hop": "Multi-hop",
-    "unanswerable_near": "Unanswerable (near-miss)", "unanswerable_off": "Unanswerable (off-topic)",
+    "unanswerable_near": "Near-miss (unanswerable)", "unanswerable_off": "Off-topic (unanswerable)",
 }
 # Stack order = palette slot order (fixed). Green is kept for the benign outcome, never for a failure.
 OUTCOME_GROUPS = [
@@ -85,7 +86,7 @@ def _base(figsize=(8.2, 4.4)):
 
 
 def _titles(fig, title: str, subtitle: str, top: float = 0.965):
-    fig.text(0.012, top, title, fontsize=13, fontweight="semibold", color=INK, va="top")
+    fig.text(0.012, top, title, fontsize=13, fontweight="bold", color=INK, va="top")
     fig.text(0.012, top - 0.062, subtitle, fontsize=9.5, color=INK2, va="top")
 
 
@@ -123,16 +124,31 @@ def fig_retrieval_by_type(study: Study, path: Path) -> None:
         ax.set_title(name, fontsize=10, color=INK2, loc="left", pad=8)
         ax.set_xlabel("Mean reciprocal rank (higher is better)", fontsize=9, color=MUTED)
     fig.subplots_adjust(left=0.2, right=0.985, top=0.74, bottom=0.16, wspace=0.08)
-    _titles(fig, "Retrievers are indistinguishable until the question is paraphrased",
-            "Mean reciprocal rank of the first chunk containing the gold evidence, by retriever (answerable questions).")
+    title, sub = retrieval_story(para, other)
+    _titles(fig, title, sub)
     _save(fig, path)
+
+
+def retrieval_story(para: dict, other: dict) -> tuple[str, str]:
+    """A title that states what the data actually shows (computed, so it cannot go stale)."""
+    sub = "Mean reciprocal rank of the first chunk containing the gold evidence (answerable questions, default chunking)."
+    dense = [r for r in para if "glove" in r and r != "glove"]
+    if "bm25" in para and dense:
+        best = max(dense, key=lambda r: para[r])
+        gain, loss = para[best] - para["bm25"], other["bm25"] - other[best]
+        if gain > 0.05 and loss > 0.02:
+            return "Embeddings help paraphrased questions and slightly hurt the rest", sub
+        if gain > 0.05:
+            return "Embeddings help paraphrased questions without hurting the rest", sub
+    spread = max(para.values()) - min(para.values())
+    return ("Retrievers differ mainly on paraphrased questions" if spread > 0.1 else "Retrievers perform alike on this corpus"), sub
 
 
 def fig_tradeoff(study: Study, path: Path) -> None:
     sw = study.sweep
     xs = [r["min_coverage"] for r in sw]
     fig, ax = _base((8.2, 4.3))
-    fig.subplots_adjust(left=0.09, right=0.86, top=0.77, bottom=0.14)
+    fig.subplots_adjust(left=0.09, right=0.79, top=0.77, bottom=0.25)
     series = [("answer_accuracy", "Answers correctly\n(answerable)", BLUE), ("abstention_accuracy", "Refuses correctly\n(unanswerable)", ORANGE)]
     for key, label, colour in series:
         ys = [r[key] for r in sw]
@@ -149,8 +165,9 @@ def fig_tradeoff(study: Study, path: Path) -> None:
     ax.set_ylim(0, 1.0)
     ax.set_xlabel("Abstention threshold: minimum question-term coverage required to answer", fontsize=9, color=MUTED)
     ax.set_ylabel("Share of questions", fontsize=9, color=MUTED)
-    ax.legend(loc="lower center", ncol=2, frameon=False, fontsize=9, labelcolor=INK2, bbox_to_anchor=(0.45, -0.32))
-    _titles(fig, "A stricter threshold buys fewer hallucinations and costs more correct answers",
+    handles, labels = ax.get_legend_handles_labels()
+    fig.legend(handles, labels, loc="lower center", ncol=2, frameon=False, fontsize=9, labelcolor=INK2, bbox_to_anchor=(0.44, 0.0))
+    _titles(fig, "Refusing more unanswerable questions means refusing more answerable ones",
             "Offline extractive generator, all questions, other settings fixed. There is no free lunch on this curve.")
     _save(fig, path)
 
@@ -159,7 +176,7 @@ def fig_outcomes(run: EvalRun, path: Path) -> None:
     by_type = run.by_type()
     types = [t for t in TYPES if t in by_type]
     fig, ax = _base((9.0, 4.6))
-    fig.subplots_adjust(left=0.21, right=0.985, top=0.76, bottom=0.27)
+    fig.subplots_adjust(left=0.29, right=0.985, top=0.76, bottom=0.27)
     ax.grid(axis="y", visible=False)
     for i, t in enumerate(types):
         counts = by_type[t].outcomes()
@@ -191,21 +208,20 @@ def fig_outcomes(run: EvalRun, path: Path) -> None:
 
 def fig_ladder(study: Study, path: Path) -> None:
     runs = list(study.ladder_oof.items())
-    fig, ax = _base((9.0, 3.9))
-    fig.subplots_adjust(left=0.5, right=0.97, top=0.78, bottom=0.14)
+    fig, ax = _base((9.0, 4.3))
+    fig.subplots_adjust(left=0.40, right=0.97, top=0.79, bottom=0.14)
     ax.grid(axis="y", visible=False)
     for i, (label, run) in enumerate(runs):
         m = run.summary(n_boot=1000)["balanced_score"]
         colour = BLUE if i == len(runs) - 1 else MUTED
         ax.plot([m["lo"], m["hi"]], [i, i], color=colour, linewidth=2, solid_capstyle="round")
         ax.scatter([m["mean"]], [i], s=70, color=colour, edgecolor=SURFACE, linewidth=2, zorder=5)
-        ax.text(min(m["hi"] + 0.015, 0.96), i - 0.28, f"{m['mean']:.2f}", fontsize=9, color=INK2, va="center")
+        ax.text(min(m["hi"] + 0.015, 0.95), i - 0.3, f"{m['mean']:.2f}", fontsize=9, color=INK2, va="center")
     ax.set_yticks(range(len(runs)))
-    short = [lab.split(": ", 1)[-1] if lab.startswith("1.") else lab for lab in (r[0] for r in runs)]
-    ax.set_yticklabels([s if len(s) < 58 else s[:55] + "..." for s in short], color=INK2, fontsize=9)
+    ax.set_yticklabels([textwrap.fill(lab, 46) for lab, _ in runs], color=INK2, fontsize=9)
     ax.invert_yaxis()
     ax.set_xlim(0, 1)
-    ax.set_xlabel("Balanced score = mean of answer accuracy and abstention accuracy (dot = mean, line = 95% CI)", fontsize=9, color=MUTED)
+    ax.set_xlabel("Balanced score (dot = mean, line = 95% CI)", fontsize=9, color=MUTED)
     _titles(fig, "What each design decision buys (cross-validated)",
             "Cumulative steps from a naive RAG to the final system; the last step is highlighted.")
     _save(fig, path)
@@ -257,6 +273,43 @@ def _failure_examples(run: EvalRun, limit: int = 10) -> str:
     return table(["id", "outcome", "question", "system answer"], rows)
 
 
+def ladder_findings(study: Study) -> str:
+    """Which steps of the ladder changed anything beyond noise? Computed from paired bootstrap CIs."""
+    runs = list(study.ladder_oof.items())
+    significant, flat = [], []
+    for i in range(1, len(runs)):
+        (_, prev), (label, cur) = runs[i - 1], runs[i]
+        parts = []
+        for metric, name in (("hallucination_rate", "hallucination rate"), ("answer_accuracy", "answer accuracy")):
+            d, lo, hi = paired_delta(prev, cur, metric)
+            if lo > 0 or hi < 0:
+                parts.append(f"{name} {d:+.2f} (paired 95% CI {lo:+.2f} to {hi:+.2f})")
+        (significant if parts else flat).append((i + 1, parts))
+    lines = [f"- Step {n} changes " + " and ".join(parts) + "." for n, parts in significant]
+    if flat:
+        lines.append("- Steps " + ", ".join(str(n) for n, _ in flat) + " make no statistically detectable difference to hallucination rate or answer accuracy (paired CIs include 0).")
+    return "\n".join(lines)
+
+
+def retrieval_sentence(study: Study) -> str:
+    rows = study.retrieval_by_type
+    def stat(ret):
+        p = [r for r in rows if r["retriever"] == ret and r["type"] == "paraphrase"]
+        o = [r for r in rows if r["retriever"] == ret and r["type"] != "paraphrase"]
+        if not p or not o:
+            return None
+        return p[0]["mrr"], sum(r["mrr"] * r["n"] for r in o) / sum(r["n"] for r in o), p[0]["n"], sum(r["n"] for r in o)
+    base = stat("bm25")
+    dense = [r for r in {x["retriever"] for x in rows} if "glove" in r and r != "glove"]
+    if not base or not dense:
+        return ""
+    best = max(dense, key=lambda r: stat(r)[0])
+    b = stat(best)
+    return (f"On the {b[2]} paraphrased questions the best embedding hybrid (`{best}`) reaches MRR {b[0]:.2f} vs {base[0]:.2f} for BM25; "
+            f"on the other {b[3]} answerable questions BM25 reaches {base[1]:.2f} vs {b[1]:.2f}. "
+            "The gaps are small relative to the sample size, but they point the same way: dense signals help when the words differ and add noise when they match.")
+
+
 def build_report(study: Study, sections: list[Section], items: list[EvalItem], out_dir: Path, llm_summary: str | None = None) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     figs = out_dir / "figures"
@@ -276,22 +329,19 @@ def build_report(study: Study, sections: list[Section], items: list[EvalItem], o
     ladder_rows, prev = [], None
     for label, run in study.ladder_oof.items():
         s = run.summary(n_boot=1000)
-        delta = ""
+        d_h = d_a = ""
         if prev is not None:
             d, lo, hi = paired_delta(prev, run, "hallucination_rate")
-            delta = f"{d:+.2f} ({lo:+.2f} to {hi:+.2f})"
-        ladder_rows.append([label, ci(s["answer_accuracy"]), ci(s["abstention_accuracy"]), ci(s["hallucination_rate"]), ci(s["balanced_score"]), delta])
+            d_h = f"{d:+.2f} ({lo:+.2f} to {hi:+.2f})"
+            d, lo, hi = paired_delta(prev, run, "answer_accuracy")
+            d_a = f"{d:+.2f} ({lo:+.2f} to {hi:+.2f})"
+        ladder_rows.append([label, ci(s["answer_accuracy"]), ci(s["abstention_accuracy"]), ci(s["hallucination_rate"]), ci(s["balanced_score"]), d_h, d_a])
         prev = run
 
-    # retrieval table (descriptive, all questions): default chunking + best per retriever
-    ret_rows = []
-    by_ret: dict[str, dict] = {}
-    for r in study.retrieval_table:
-        by_ret.setdefault(r["retriever"], []).append(r)
-    for ret, rs in by_ret.items():
-        for r in sorted(rs, key=lambda r: -r["mrr"])[:1] if ret != "random" else rs:
-            ret_rows.append([ret, r["chunking"], _f(r["hit@1"]), _f(r["hit@5"]), _f(r["recall@5"]), _f(r["mrr"]), _f(r["ndcg@5"])])
-    ret_rows.sort(key=lambda r: -float(r[5]))
+    # retrieval table (descriptive, all questions): every retriever at the SAME default chunking
+    ret_rows = [[r["retriever"], _f(r["hit@1"]), _f(r["hit@5"]), _f(r["recall@5"]), _f(r["mrr"]), _f(r["ndcg@5"])]
+                for r in study.retrieval_table if r["chunking"] == DEFAULT_CHUNK]
+    ret_rows.sort(key=lambda r: -float(r[4]))
 
     chunk_rows = []
     for r in study.retrieval_table:
@@ -331,6 +381,9 @@ Latency (median / p95): {_f(oof['latency_p50_ms']['mean'], 1)} ms / {_f(oof['lat
 **How to read this.**
 - Retrieval is strong: the gold evidence is in the top 5 for {oof['hit@5']['mean']:.0%} of answerable questions.
 - The extractive generator is the bottleneck: it gets {oof['answer_accuracy']['mean']:.0%} of answerable questions right and correctly refuses {fa:.0%} of unanswerable ones.
+- Refusals concentrate where the wording differs from the handbook or an answer needs two passages: paraphrase and multi-hop questions are almost all refused (see the table below). \
+Retrieval found the evidence for nearly all of them, so this is the gap an LLM generator is meant to close, not a retrieval problem.
+- The operating point comes from maximising the balanced score, which weighs refusing correctly as much as answering correctly. If a wrong answer is cheaper than a refusal in your setting, lower the threshold (section 5).
 - Scoring the same configuration on the questions it was tuned on gives balanced score {ins['balanced_score']['mean']:.2f} vs the honest {oof['balanced_score']['mean']:.2f}: \
 tuning on ~90 questions inflates results by {gap:+.2f}. That is why the headline is cross-validated.
 - A retriever that returns random chunks scores balanced {floor['balanced_score']['mean']:.2f}: it "wins" abstention only by refusing almost everything, which is why abstention accuracy is never reported alone.
@@ -352,15 +405,21 @@ Full per-question results: [`per_question.csv`](per_question.csv).
 
 ![Component ladder](figures/component_ladder.png)
 
-{table(["Step", "Answer acc.", "Abstention acc.", "Hallucination rate", "Balanced", "Change in hallucination rate vs previous step (paired 95% CI)"], ladder_rows)}
+{table(["Step", "Answer acc.", "Abstention acc.", "Hallucination rate", "Balanced", "Δ hallucination vs previous step", "Δ answer acc. vs previous step"], ladder_rows)}
+
+Deltas are paired over the same questions with 95% bootstrap CIs. What they show:
+
+{ladder_findings(study)}
 
 ## 4. Retrieval ablation (descriptive, all {n_ans} answerable questions)
 
 ![Retrieval by question type](figures/retrieval_by_type.png)
 
-Best chunking per retriever, sorted by MRR:
+All retrievers at the same chunking (`{DEFAULT_CHUNK}`), sorted by MRR:
 
-{table(["Retriever", "Chunking", "Hit@1", "Hit@5", "Recall@5", "MRR", "nDCG@5"], ret_rows)}
+{table(["Retriever", "Hit@1", "Hit@5", "Recall@5", "MRR", "nDCG@5"], ret_rows)}
+
+{retrieval_sentence(study)}
 
 Chunking comparison for `{best.retriever}`:
 
