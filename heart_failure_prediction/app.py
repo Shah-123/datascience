@@ -1,142 +1,99 @@
-import streamlit as st
-import pandas as pd
-import numpy as np
-from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
-import seaborn as sns
 import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+import streamlit as st
+
+import heart_model as hm
+
+st.set_page_config(page_title="Heart Failure Risk", page_icon="❤️", layout="wide")
 
 
 @st.cache_data
-def load_data(filepath):
-    data = pd.read_csv(filepath)
-    return data
-
-data = load_data('heart_faliure_prediction/heart_failure_clinical_records.csv')
-
-X = data.drop('DEATH_EVENT', axis=1)
-y = data['DEATH_EVENT']
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+def get_data():
+    return hm.load_data()
 
 
-scaler = StandardScaler()
-X_train_scaled = scaler.fit_transform(X_train)
-X_test_scaled = scaler.transform(X_test)
-
-model = LogisticRegression(random_state=42)
-model.fit(X_train_scaled, y_train)
-
-y_pred = model.predict(X_test_scaled)
+@st.cache_resource(show_spinner="Training model...")
+def get_model():
+    return hm.train_final(get_data())
 
 
+@st.cache_data(show_spinner="Cross-validating models...")
+def get_cv_metrics():
+    return hm.cross_validate_models(get_data())
 
-st.title('Heart Failure Prediction App')
-st.sidebar.header('Patient Data')
 
-
-def user_input_features():
-    st.sidebar.markdown("### Age of the patient (years)")
-    age = st.sidebar.slider('Age', 18, 100, 60)
-    
-    st.sidebar.markdown("### Decrease of red blood cells or hemoglobin")
-    anaemia = st.sidebar.selectbox('Anaemia', ('No', 'Yes'))
-    
-    st.sidebar.markdown("### Level of the CPK enzyme in the blood (mcg/L)")
-    creatinine_phosphokinase = st.sidebar.slider('Creatinine Phosphokinase', 0, 7861, 200)
-    
-    st.sidebar.markdown("### If the patient has diabetes")
-    diabetes = st.sidebar.selectbox('Diabetes', ('No', 'Yes'))
-    
-    st.sidebar.markdown("### Percentage of blood leaving the heart at each contraction (percentage)")
-    ejection_fraction = st.sidebar.slider('Ejection Fraction', 14, 80, 30)
-    
-    st.sidebar.markdown("### If the patient has hypertension")
-    high_blood_pressure = st.sidebar.selectbox('High Blood Pressure', ('No', 'Yes'))
-    
-    st.sidebar.markdown("### Platelets in the blood (k/µL)")
-    platelets = st.sidebar.slider('Platelets', 25, 850, 250)
-    
-    st.sidebar.markdown("### Level of serum creatinine in the blood (mg/dL)")
-    serum_creatinine = st.sidebar.slider('Serum Creatinine', 0.0, 10.0, 1.5)
-    
-    st.sidebar.markdown("### Level of serum sodium in the blood (mEq/L)")
-    serum_sodium = st.sidebar.slider('Serum Sodium', 110, 150, 135)
-    
-    st.sidebar.markdown("### Sex of the patient (woman: 0, man: 1)")
-    sex = st.sidebar.selectbox('Sex', ('Female', 'Male'))
-    
-    st.sidebar.markdown("### If the patient smokes or not")
-    smoking = st.sidebar.selectbox('Smoking', ('No', 'Yes'))
-    
-    st.sidebar.markdown("### Follow-up period (days)")
-    time = st.sidebar.slider('Time', 0, 300, 100)
-    
-    data = {
-        'age': age,
-        'anaemia': 1 if anaemia == 'Yes' else 0,
-        'creatinine_phosphokinase': creatinine_phosphokinase,
-        'diabetes': 1 if diabetes == 'Yes' else 0,
-        'ejection_fraction': ejection_fraction,
-        'high_blood_pressure': 1 if high_blood_pressure == 'Yes' else 0,
-        'platelets': platelets,
-        'serum_creatinine': serum_creatinine,
-        'serum_sodium': serum_sodium,
-        'sex': 1 if sex == 'Male' else 0,
-        'smoking': 1 if smoking == 'Yes' else 0,
-        'time': time
+def patient_inputs():
+    sb = st.sidebar
+    sb.header("Patient data")
+    yes_no = lambda label, help=None: 1 if sb.selectbox(label, ("No", "Yes"), help=help) == "Yes" else 0  # noqa: E731
+    return {
+        "age": sb.slider("Age (years)", 40, 95, 60),
+        "sex": 1 if sb.selectbox("Sex", ("Female", "Male")) == "Male" else 0,
+        "anaemia": yes_no("Anaemia", "Decrease of red blood cells or haemoglobin"),
+        "diabetes": yes_no("Diabetes"),
+        "high_blood_pressure": yes_no("High blood pressure"),
+        "smoking": yes_no("Smoking"),
+        "ejection_fraction": sb.slider("Ejection fraction (%)", 14, 80, 38,
+                                       help="Percentage of blood leaving the heart at each contraction"),
+        "serum_creatinine": sb.slider("Serum creatinine (mg/dL)", 0.5, 9.5, 1.1, 0.1),
+        "serum_sodium": sb.slider("Serum sodium (mEq/L)", 113, 148, 137),
+        "creatinine_phosphokinase": sb.number_input("CPK enzyme (mcg/L)", 20, 8000, 250),
+        "platelets": sb.number_input("Platelets (per mL)", 25_000, 850_000, 263_000, step=1_000),
     }
-    features = pd.DataFrame(data, index=[0])
-    return features
-
-input_df = user_input_features()
-
-data_combined = pd.concat([input_df, X], axis=0)
-data_combined_scaled = scaler.transform(data_combined)
-input_data_scaled = data_combined_scaled[:1]
-
-prediction = model.predict(input_data_scaled)
-prediction_prob = model.predict_proba(input_data_scaled)
-
-st.subheader('User Input Features')
-st.write(input_df)
-
-st.subheader('Prediction')
-st.write('Death Event Prediction:', 'Yes' if prediction[0] == 1 else 'No')
-st.write('Prediction Probability: {:.2f}'.format(prediction_prob[0][1]))
 
 
-st.subheader('Dataset')
-st.write(data)
+def main():
+    st.title("❤️ Heart Failure Mortality Risk")
+    st.warning("Educational project, not a medical device. Don't use it for clinical decisions.")
+    df = get_data()
+    model = get_model()
+    patient = pd.DataFrame([patient_inputs()])[hm.FEATURES]
 
-st.subheader('Data Visualization')
+    risk = float(model.predict_proba(patient)[0, 1])
+    c1, c2 = st.columns(2)
+    c1.metric("Model risk score", f"{risk:.0%}")
+    c2.metric("Risk band", hm.risk_band(risk))
+    st.caption("The score comes from a class-balanced random forest. Treat it as a relative ranking, not a calibrated probability.")
 
-if st.checkbox('Show correlation heatmap'):
-    st.write('Correlation Heatmap')
-    corr_matrix = data.corr()
-    plt.figure(figsize=(10, 8))
-    sns.heatmap(corr_matrix, annot=True, fmt='.2f', cmap='coolwarm')
-    st.pyplot(plt)
-    plt.clf()  
+    tab1, tab2 = st.tabs(["Model performance", "Data exploration"])
+    with tab1:
+        st.markdown(
+            "5-fold **stratified group** cross-validation on the de-duplicated data (1,320 rows). Rows with the same "
+            "age and sex stay in the same fold, and the follow-up `time` column is excluded because it leaks the outcome."
+        )
+        cv = get_cv_metrics()
+        st.dataframe(cv[["ROC-AUC", "PR-AUC", "Recall", "Precision"]].style.format("{:.3f}"), width="stretch")
+        st.info(
+            "This dataset was synthetically expanded from about 300 real patients, so even these scores are likely "
+            "optimistic. The original project reported 99% accuracy because duplicate rows were in both train and test."
+        )
+        fig, ax = plt.subplots(figsize=(7, 4))
+        hm.feature_importance(model).sort_values().plot.barh(ax=ax, title="Random forest feature importance")
+        st.pyplot(fig)
 
-if st.checkbox('Show age distribution'):
-    st.write('Age Distribution')
-    plt.figure(figsize=(10, 6))
-    sns.histplot(data['age'], kde=True)
-    plt.title('Distribution of Age')
-    st.pyplot(plt)
-    plt.clf()
+    with tab2:
+        c1, c2 = st.columns(2)
+        fig, ax = plt.subplots(figsize=(6, 4))
+        sns.boxplot(data=df, x=hm.TARGET, y="ejection_fraction", ax=ax)
+        ax.set(xlabel="Death event (0 = survived, 1 = died)", title="Ejection fraction by outcome")
+        c1.pyplot(fig)
+        fig, ax = plt.subplots(figsize=(6, 4))
+        sns.boxplot(data=df, x=hm.TARGET, y="serum_creatinine", ax=ax)
+        ax.set(xlabel="Death event (0 = survived, 1 = died)", title="Serum creatinine by outcome", yscale="log")
+        c2.pyplot(fig)
 
-if st.checkbox('Show count plots for categorical features'):
-    categorical_features = ['anaemia', 'diabetes', 'high_blood_pressure', 'sex', 'smoking']
-    
-    for feature in categorical_features:
-        plt.figure(figsize=(10, 6))
-        sns.countplot(x=feature, data=data, hue='DEATH_EVENT', palette="pastel")
-        st.header(f' Death by {feature.capitalize()} ')
-        plt.title(f'Count of {feature.capitalize()} by Death Event')
-        plt.xlabel(feature.capitalize())
-        plt.ylabel('Count')
-        plt.legend(title='Death Event', loc='upper right')
-        st.pyplot(plt)
-        plt.clf()
+        feature = st.selectbox("Death rate by", ["anaemia", "diabetes", "high_blood_pressure", "sex", "smoking"])
+        rates = df.groupby(feature)[hm.TARGET].mean().rename(index={0: "No", 1: "Yes"})
+        if feature == "sex":
+            rates = rates.rename(index={"No": "Female", "Yes": "Male"})
+        st.bar_chart(rates, y_label="Death rate")
+
+        if st.checkbox("Show correlation heatmap"):
+            fig, ax = plt.subplots(figsize=(10, 8))
+            sns.heatmap(df.drop(columns=hm.LEAKY).corr(), annot=True, fmt=".2f", cmap="coolwarm", ax=ax)
+            st.pyplot(fig)
+
+
+if __name__ == "__main__":
+    main()
