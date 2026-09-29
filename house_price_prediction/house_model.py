@@ -5,6 +5,7 @@ monthly rent (thousands of PKR) are different targets. Mixing them in one
 regression, as the first version of this project did, mostly teaches the
 model to tell sales from rentals.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -153,14 +154,18 @@ def load_or_train(path: Path = MODEL_PATH) -> dict:
 
 
 def make_input(property_type, city, location, area_marla, bedrooms, baths) -> pd.DataFrame:
-    return pd.DataFrame([{
-        "property_type": property_type,
-        "city": city,
-        "area_location": f"{city} / {location}",
-        "Area_in_Marla": area_marla,
-        "bedrooms": bedrooms,
-        "baths": baths,
-    }])
+    return pd.DataFrame(
+        [
+            {
+                "property_type": property_type,
+                "city": city,
+                "area_location": f"{city} / {location}",
+                "Area_in_Marla": area_marla,
+                "bedrooms": bedrooms,
+                "baths": baths,
+            }
+        ]
+    )
 
 
 def format_pkr(amount: float) -> str:

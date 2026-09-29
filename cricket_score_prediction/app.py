@@ -40,7 +40,9 @@ def main():
         st.stop()
 
     features = cm.make_input(
-        venue, batting_team, bowling_team,
+        venue,
+        batting_team,
+        bowling_team,
         balls_left=cm.BALLS_PER_INNINGS - balls_bowled,
         wickets_left=10 - wickets_fallen,
         current_score=current_score,

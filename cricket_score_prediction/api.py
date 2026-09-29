@@ -3,6 +3,7 @@
 Run from the repository root:
     uvicorn api:app --app-dir cricket_score_prediction --reload
 """
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
@@ -60,9 +61,15 @@ def options():
 @app.post("/predict", response_model=Prediction)
 def predict(match: MatchState):
     bundle = state["bundle"]
-    for field, allowed in (("venue", bundle["venues"]), ("batting_team", bundle["teams"]), ("bowling_team", bundle["teams"])):
+    for field, allowed in (
+        ("venue", bundle["venues"]),
+        ("batting_team", bundle["teams"]),
+        ("bowling_team", bundle["teams"]),
+    ):
         if getattr(match, field) not in allowed:
-            raise HTTPException(status_code=422, detail=f"Unknown {field}: {getattr(match, field)!r}. See GET /options.")
+            raise HTTPException(
+                status_code=422, detail=f"Unknown {field}: {getattr(match, field)!r}. See GET /options."
+            )
     features = cm.make_input(**match.model_dump())
     predicted = max(float(bundle["model"].predict(features[cm.FEATURES])[0]), match.current_score)
     return Prediction(

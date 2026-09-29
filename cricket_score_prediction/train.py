@@ -3,6 +3,7 @@
 Usage (from the repository root):
     python cricket_score_prediction/train.py
 """
+
 import cricket_model as cm
 
 

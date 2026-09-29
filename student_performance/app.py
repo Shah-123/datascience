@@ -56,7 +56,10 @@ def main():
         fig, ax = plt.subplots(figsize=(8, 5))
         effects.plot.barh(ax=ax, color=["#d62728" if v < 0 else "#2ca02c" for v in effects])
         ax.axvline(0, color="black", lw=0.8)
-        ax.set(xlabel="Math-score points compared with the reference group", title="Effect of each factor (other factors held fixed)")
+        ax.set(
+            xlabel="Math-score points compared with the reference group",
+            title="Effect of each factor (other factors held fixed)",
+        )
         st.pyplot(fig)
         st.caption("Reference groups: " + "; ".join(f"{k} = {v}" for k, v in refs.items()))
         st.markdown(

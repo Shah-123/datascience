@@ -15,6 +15,7 @@ unvaccinated counts. Those columns (and every ``*_VAC`` column) are excluded
 from the features. The model only sees workload information from the current
 campaign plus the monitor's NA history from *previous* campaigns.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -35,22 +36,54 @@ KEYS = ["MONITORID", "CAMP_ID"]
 
 # Columns that encode the target through the accounting identity above.
 LEAKY_COLUMNS = [
-    "NT", "TVBMC", "ASLEEP", "REFUSAL", "OTHER_REASON", "VBNFM",
-    "RECALL_011_VAC", "RECALL_1259_VAC", "GUEST_VAC", "FM_059_VAC",
-    "NT_VAC", "TVBM_VAC", "NA_VAC", "ASLEEP_VAC", "REFUSAL_VAC", "OTHER_VAC", "VBNFM_VAC",
+    "NT",
+    "TVBMC",
+    "ASLEEP",
+    "REFUSAL",
+    "OTHER_REASON",
+    "VBNFM",
+    "RECALL_011_VAC",
+    "RECALL_1259_VAC",
+    "GUEST_VAC",
+    "FM_059_VAC",
+    "NT_VAC",
+    "TVBM_VAC",
+    "NA_VAC",
+    "ASLEEP_VAC",
+    "REFUSAL_VAC",
+    "OTHER_VAC",
+    "VBNFM_VAC",
 ]
 
 WORKLOAD_FEATURES = [
-    "n_clusters", "n_ucs", "TOTAL_HH", "RECALL_011_CHK", "RECALL_1259_CHK",
-    "FM_059_CHK", "GUEST_CHK", "ZERO_DOSE_023", "door_mark_rate", "hrmp_rate",
+    "n_clusters",
+    "n_ucs",
+    "TOTAL_HH",
+    "RECALL_011_CHK",
+    "RECALL_1259_CHK",
+    "FM_059_CHK",
+    "GUEST_CHK",
+    "ZERO_DOSE_023",
+    "door_mark_rate",
+    "hrmp_rate",
 ]
 HISTORY_FEATURES = ["prev_na_rate", "hist_na_rate", "n_prev_campaigns"]
 FEATURES = WORKLOAD_FEATURES + HISTORY_FEATURES
 
 REQUIRED_COLUMNS = [
-    "MONITORID", "UCID", "CAMP_ID", "CLUSTER_DATE", "TOTAL_HH", "HRMP",
-    "RECALL_011_CHK", "RECALL_1259_CHK", "FM_059_CHK", "GUEST_CHK",
-    "ZERO_DOSE_023", "CORRECT_DOOR_MARK", TARGET,
+    "MONITORID",
+    "UCID",
+    "CAMP_ID",
+    "CLUSTER_DATE",
+    "TOTAL_HH",
+    "HRMP",
+    "RECALL_011_CHK",
+    "RECALL_1259_CHK",
+    "FM_059_CHK",
+    "GUEST_CHK",
+    "ZERO_DOSE_023",
+    "CORRECT_DOOR_MARK",
+    TARGET,
 ]
 
 
@@ -112,7 +145,9 @@ def make_models() -> dict:
     return {
         "Poisson GLM": make_pipeline(
             # GLMs can't take NaNs; a monitor's first campaign has no history.
-            SimpleImputer(strategy="median"), StandardScaler(), PoissonRegressor(alpha=1e-3, max_iter=1000)
+            SimpleImputer(strategy="median"),
+            StandardScaler(),
+            PoissonRegressor(alpha=1e-3, max_iter=1000),
         ),
         "Gradient boosting (Poisson)": HistGradientBoostingRegressor(
             loss="poisson", learning_rate=0.05, max_iter=400, random_state=42
@@ -150,8 +185,12 @@ def fit_and_evaluate(table: pd.DataFrame, n_test_campaigns: int = 5) -> Training
     The best model is then refit on all campaigns so it can score new data.
     """
     train, test = temporal_split(table, n_test_campaigns)
-    rows = [{"Model": "Baseline (avg NA rate x children checked)",
-             **regression_metrics(test[TARGET], baseline_predict(train, test))}]
+    rows = [
+        {
+            "Model": "Baseline (avg NA rate x children checked)",
+            **regression_metrics(test[TARGET], baseline_predict(train, test)),
+        }
+    ]
     fitted = {}
     for name, model in make_models().items():
         model.fit(train[FEATURES], train[TARGET])

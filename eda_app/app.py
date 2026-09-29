@@ -1,4 +1,5 @@
 """EDA Master: upload a CSV/Excel file and explore, clean and analyse it without code."""
+
 import io
 from pathlib import Path
 
@@ -50,12 +51,14 @@ def overview(data):
     with st.expander("Data sample"):
         st.dataframe(data.head(100), width="stretch")
     with st.expander("Column summary"):
-        summary = pd.DataFrame({
-            "dtype": data.dtypes.astype(str),
-            "missing": data.isna().sum(),
-            "missing %": (data.isna().mean() * 100).round(1),
-            "unique": data.nunique(),
-        })
+        summary = pd.DataFrame(
+            {
+                "dtype": data.dtypes.astype(str),
+                "missing": data.isna().sum(),
+                "missing %": (data.isna().mean() * 100).round(1),
+                "unique": data.nunique(),
+            }
+        )
         st.dataframe(summary, width="stretch")
     with st.expander("Descriptive statistics"):
         st.dataframe(data.describe(include="all").T, width="stretch")
@@ -78,8 +81,11 @@ def preprocess(data):
             data = data.drop_duplicates()
         for col in missing:
             is_numeric = col in numeric_cols(data)
-            options = ["Keep", "Drop rows", "Mean", "Median", "Mode", "Interpolate"] if is_numeric else \
-                ["Keep", "Drop rows", "Mode", "Fill with 'Unknown'"]
+            options = (
+                ["Keep", "Drop rows", "Mean", "Median", "Mode", "Interpolate"]
+                if is_numeric
+                else ["Keep", "Drop rows", "Mode", "Fill with 'Unknown'"]
+            )
             method = st.selectbox(f"{col} ({data[col].isna().sum()} missing)", options, key=f"missing_{col}")
             # Assign back instead of inplace=True, which does nothing on a
             # column under pandas copy-on-write.
@@ -159,16 +165,27 @@ def statistical_analysis(data):
         else:
             method = st.radio("Method", ["pearson", "spearman"], horizontal=True, key="corr_method")
             fig, ax = plt.subplots(figsize=(min(2 + len(nums), 14), min(1.5 + 0.8 * len(nums), 12)))
-            sns.heatmap(data[nums].corr(method=method), annot=len(nums) <= 15, fmt=".2f", cmap="coolwarm",
-                        vmin=-1, vmax=1, ax=ax)
+            sns.heatmap(
+                data[nums].corr(method=method),
+                annot=len(nums) <= 15,
+                fmt=".2f",
+                cmap="coolwarm",
+                vmin=-1,
+                vmax=1,
+                ax=ax,
+            )
             st.pyplot(fig)
 
     with st.expander("Hypothesis tests", expanded=True):
-        test = st.selectbox("Test", [
-            "Compare two groups (t-test / Mann-Whitney U)",
-            "Compare several groups (ANOVA / Kruskal-Wallis)",
-            "Association between two categorical columns (chi-square)",
-        ], key="test")
+        test = st.selectbox(
+            "Test",
+            [
+                "Compare two groups (t-test / Mann-Whitney U)",
+                "Compare several groups (ANOVA / Kruskal-Wallis)",
+                "Association between two categorical columns (chi-square)",
+            ],
+            key="test",
+        )
         if test.startswith("Association"):
             if len(cats) < 2:
                 st.info("Needs at least two categorical columns.")
@@ -191,7 +208,9 @@ def statistical_analysis(data):
             st.info("Needs at least two groups with two or more values.")
             return
         if test.startswith("Compare two"):
-            pair = st.multiselect("Pick two groups", list(groups), default=list(groups)[:2], max_selections=2, key="test_pair")
+            pair = st.multiselect(
+                "Pick two groups", list(groups), default=list(groups)[:2], max_selections=2, key="test_pair"
+            )
             if len(pair) != 2:
                 st.info("Pick exactly two groups.")
                 return
@@ -199,12 +218,16 @@ def statistical_analysis(data):
             t = stats.ttest_ind(groups[g1], groups[g2], equal_var=False)
             u = stats.mannwhitneyu(groups[g1], groups[g2])
             report(t.pvalue, f"Welch t = {t.statistic:.3f}", f"mean {value} differs between {g1} and {g2}")
-            report(u.pvalue, f"Mann-Whitney U = {u.statistic:.0f} (no normality assumption)", "the distributions differ")
+            report(
+                u.pvalue, f"Mann-Whitney U = {u.statistic:.0f} (no normality assumption)", "the distributions differ"
+            )
         else:
             f = stats.f_oneway(*groups.values())
             k = stats.kruskal(*groups.values())
             report(f.pvalue, f"ANOVA F = {f.statistic:.3f}", f"mean {value} differs across {group} groups")
-            report(k.pvalue, f"Kruskal-Wallis H = {k.statistic:.3f} (no normality assumption)", "the distributions differ")
+            report(
+                k.pvalue, f"Kruskal-Wallis H = {k.statistic:.3f} (no normality assumption)", "the distributions differ"
+            )
         fig = px.box(data, x=group, y=value, points=False, title=f"{value} by {group}")
         st.plotly_chart(fig, width="stretch")
 
@@ -217,8 +240,20 @@ def report(p, detail, finding, alpha=0.05):
 def visualization(data):
     st.subheader("🎨 Visualisation")
     nums, cols = numeric_cols(data), data.columns.tolist()
-    kind = st.selectbox("Plot type", ["Histogram", "Box plot", "Violin plot", "Scatter plot", "Line plot",
-                                      "Bar chart (counts)", "Pie chart", "Pair plot"], key="plot_kind")
+    kind = st.selectbox(
+        "Plot type",
+        [
+            "Histogram",
+            "Box plot",
+            "Violin plot",
+            "Scatter plot",
+            "Line plot",
+            "Bar chart (counts)",
+            "Pie chart",
+            "Pair plot",
+        ],
+        key="plot_kind",
+    )
     color = st.selectbox("Colour by (optional)", ["None"] + categorical_cols(data), key="plot_color")
     color = None if color == "None" else color
     if kind in ("Histogram", "Box plot", "Violin plot"):
@@ -271,8 +306,15 @@ def text_analysis(data):
         from textblob import TextBlob
 
         polarity = data[col].dropna().astype(str).map(lambda t: TextBlob(t).sentiment.polarity)
-        st.plotly_chart(px.histogram(polarity, nbins=40, labels={"value": "polarity (-1 negative to +1 positive)"},
-                                     title=f"Sentiment of {col}"), width="stretch")
+        st.plotly_chart(
+            px.histogram(
+                polarity,
+                nbins=40,
+                labels={"value": "polarity (-1 negative to +1 positive)"},
+                title=f"Sentiment of {col}",
+            ),
+            width="stretch",
+        )
 
 
 def clustering(data):
@@ -289,13 +331,22 @@ def clustering(data):
     n = st.slider("Number of clusters", 2, 10, 3, key="n_clusters")
     method = st.selectbox("Method", ["K-Means", "Agglomerative"], key="cluster_method")
     scaled = StandardScaler().fit_transform(X)
-    model = KMeans(n_clusters=n, n_init=10, random_state=42) if method == "K-Means" else AgglomerativeClustering(n_clusters=n)
+    model = (
+        KMeans(n_clusters=n, n_init=10, random_state=42)
+        if method == "K-Means"
+        else AgglomerativeClustering(n_clusters=n)
+    )
     labels = pd.Series(model.fit_predict(scaled), index=X.index).astype(str)
     st.caption(f"Features are standardised first. {len(data) - len(X)} rows with missing values were skipped.")
     st.dataframe(X.groupby(labels).mean().round(2).assign(size=labels.value_counts()), width="stretch")
     coords = PCA(n_components=2).fit_transform(scaled)
-    fig = px.scatter(x=coords[:, 0], y=coords[:, 1], color=labels, labels={"x": "PC 1", "y": "PC 2", "color": "cluster"},
-                     title="Clusters projected onto the first two principal components")
+    fig = px.scatter(
+        x=coords[:, 0],
+        y=coords[:, 1],
+        color=labels,
+        labels={"x": "PC 1", "y": "PC 2", "color": "cluster"},
+        title="Clusters projected onto the first two principal components",
+    )
     st.plotly_chart(fig, width="stretch")
 
 
@@ -312,8 +363,15 @@ def dimensionality_reduction(data):
     if method == "PCA":
         pca = PCA().fit(scaled)
         explained = pd.Series(pca.explained_variance_ratio_.cumsum(), index=range(1, len(nums) + 1))
-        st.plotly_chart(px.line(explained, markers=True, labels={"index": "components", "value": "cumulative variance explained"},
-                                title="Explained variance"), width="stretch")
+        st.plotly_chart(
+            px.line(
+                explained,
+                markers=True,
+                labels={"index": "components", "value": "cumulative variance explained"},
+                title="Explained variance",
+            ),
+            width="stretch",
+        )
         coords = pca.transform(scaled)[:, :2]
         index = X.index
     else:
@@ -321,7 +379,9 @@ def dimensionality_reduction(data):
         coords = TSNE(n_components=2, random_state=42, init="pca").fit_transform(scaled[X.index.get_indexer(index)])
         st.caption(f"t-SNE uses up to {MAX_ROWS_TSNE:,} sampled rows.")
     hue = None if color == "None" else data.loc[index, color].astype(str)
-    fig = px.scatter(x=coords[:, 0], y=coords[:, 1], color=hue, labels={"x": "component 1", "y": "component 2"}, opacity=0.6)
+    fig = px.scatter(
+        x=coords[:, 0], y=coords[:, 1], color=hue, labels={"x": "component 1", "y": "component 2"}, opacity=0.6
+    )
     st.plotly_chart(fig, width="stretch")
 
 
@@ -333,8 +393,13 @@ def time_series(data):
         return
     date_col = st.selectbox("Date column", dates, key="ts_date")
     value_col = st.selectbox("Value column", nums, key="ts_value")
-    freq = st.selectbox("Aggregate by", {"D": "Day", "W": "Week", "MS": "Month", "QS": "Quarter"}.items(),
-                        index=2, format_func=lambda kv: kv[1], key="ts_freq")[0]
+    freq = st.selectbox(
+        "Aggregate by",
+        {"D": "Day", "W": "Week", "MS": "Month", "QS": "Quarter"}.items(),
+        index=2,
+        format_func=lambda kv: kv[1],
+        key="ts_freq",
+    )[0]
     how = st.radio("Aggregation", ["mean", "sum"], horizontal=True, key="ts_how")
     series = data.set_index(date_col)[value_col].resample(freq).agg(how).dropna()
     st.plotly_chart(px.line(series, title=f"{how} of {value_col} per period"), width="stretch")

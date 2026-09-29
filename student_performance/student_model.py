@@ -6,11 +6,11 @@ Two questions, two models:
 - Consistency: given reading and writing scores, what math score is expected?
   This is easy because the three scores are strongly correlated.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.dummy import DummyRegressor
@@ -25,7 +25,12 @@ BACKGROUND = ["gender", "ethnicity", "parental level of education", "lunch", "te
 OTHER_SCORES = ["reading score", "writing score"]
 FEATURE_SETS = {"Background only": BACKGROUND, "Background + reading/writing": BACKGROUND + OTHER_SCORES}
 EDUCATION_ORDER = [
-    "some high school", "high school", "some college", "associate's degree", "bachelor's degree", "master's degree",
+    "some high school",
+    "high school",
+    "some college",
+    "associate's degree",
+    "bachelor's degree",
+    "master's degree",
 ]
 
 
@@ -48,8 +53,13 @@ def cross_validate_models(df: pd.DataFrame) -> pd.DataFrame:
     models.update({f"Linear regression: {name}": (feats, make_model(feats)) for name, feats in FEATURE_SETS.items()})
     rows = {}
     for name, (features, model) in models.items():
-        scores = cross_validate(model, df[features], df[TARGET], cv=cv,
-                                scoring=("neg_mean_absolute_error", "neg_root_mean_squared_error", "r2"))
+        scores = cross_validate(
+            model,
+            df[features],
+            df[TARGET],
+            cv=cv,
+            scoring=("neg_mean_absolute_error", "neg_root_mean_squared_error", "r2"),
+        )
         rows[name] = {
             "MAE": -scores["test_neg_mean_absolute_error"].mean(),
             "RMSE": -scores["test_neg_root_mean_squared_error"].mean(),
@@ -72,4 +82,4 @@ def background_effects(model: Pipeline) -> pd.Series:
 def reference_groups(model: Pipeline) -> dict:
     """The category each background coefficient is compared against."""
     encoder = model.named_steps["encode"].named_transformers_["cat"]
-    return {feature: cats[0] for feature, cats in zip(BACKGROUND, encoder.categories_)}
+    return {feature: cats[0] for feature, cats in zip(BACKGROUND, encoder.categories_, strict=True)}

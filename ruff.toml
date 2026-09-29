@@ -1,0 +1,13 @@
+line-length = 120
+extend-exclude = ["*.ipynb"]
+
+[lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+# `ruff format` handles line length; long user-facing strings are left intact.
+ignore = ["E501"]
+
+[lint.isort]
+known-first-party = [
+    "api", "conftest", "cricket_model", "heart_model", "house_model",
+    "icm_model", "netflix_data", "student_model",
+]

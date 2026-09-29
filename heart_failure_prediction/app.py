@@ -34,8 +34,9 @@ def patient_inputs():
         "diabetes": yes_no("Diabetes"),
         "high_blood_pressure": yes_no("High blood pressure"),
         "smoking": yes_no("Smoking"),
-        "ejection_fraction": sb.slider("Ejection fraction (%)", 14, 80, 38,
-                                       help="Percentage of blood leaving the heart at each contraction"),
+        "ejection_fraction": sb.slider(
+            "Ejection fraction (%)", 14, 80, 38, help="Percentage of blood leaving the heart at each contraction"
+        ),
         "serum_creatinine": sb.slider("Serum creatinine (mg/dL)", 0.5, 9.5, 1.1, 0.1),
         "serum_sodium": sb.slider("Serum sodium (mEq/L)", 113, 148, 137),
         "creatinine_phosphokinase": sb.number_input("CPK enzyme (mcg/L)", 20, 8000, 250),
@@ -54,7 +55,9 @@ def main():
     c1, c2 = st.columns(2)
     c1.metric("Model risk score", f"{risk:.0%}")
     c2.metric("Risk band", hm.risk_band(risk))
-    st.caption("The score comes from a class-balanced random forest. Treat it as a relative ranking, not a calibrated probability.")
+    st.caption(
+        "The score comes from a class-balanced random forest. Treat it as a relative ranking, not a calibrated probability."
+    )
 
     tab1, tab2 = st.tabs(["Model performance", "Data exploration"])
     with tab1:

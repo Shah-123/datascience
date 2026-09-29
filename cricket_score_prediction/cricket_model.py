@@ -6,6 +6,7 @@ innings are highly correlated, so evaluation always splits by innings:
 a random row split lets the model see other balls of the very same innings
 during training and overstates accuracy.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -36,12 +37,14 @@ XGB_PARAMS = dict(n_estimators=500, learning_rate=0.03, max_depth=3, min_child_w
 
 def load_data(path=DATA_PATH) -> pd.DataFrame:
     """Load the ball-by-ball table, give columns clear names and add an innings id."""
-    df = pd.read_csv(path).rename(columns={
-        "runs_off_bat_x": TARGET,
-        "wicket_left": "wickets_left",
-        "Current_Score": "current_score",
-        "Crr": "current_run_rate",
-    })
+    df = pd.read_csv(path).rename(
+        columns={
+            "runs_off_bat_x": TARGET,
+            "wicket_left": "wickets_left",
+            "Current_Score": "current_score",
+            "Crr": "current_run_rate",
+        }
+    )
     df["innings_id"] = infer_innings_id(df)
     return df
 
@@ -65,30 +68,34 @@ def infer_innings_id(df: pd.DataFrame) -> pd.Series:
 def make_input(venue, batting_team, bowling_team, balls_left, wickets_left, current_score, last_five) -> pd.DataFrame:
     """Build a single-row feature frame; the run rate is derived, not typed in."""
     balls_bowled = max(BALLS_PER_INNINGS - balls_left, 1)
-    return pd.DataFrame([{
-        "venue": venue,
-        "batting_team": batting_team,
-        "bowling_team": bowling_team,
-        "balls_left": balls_left,
-        "wickets_left": wickets_left,
-        "current_score": current_score,
-        "current_run_rate": current_score * 6 / balls_bowled,
-        "last_five": last_five,
-    }])
+    return pd.DataFrame(
+        [
+            {
+                "venue": venue,
+                "batting_team": batting_team,
+                "bowling_team": bowling_team,
+                "balls_left": balls_left,
+                "wickets_left": wickets_left,
+                "current_score": current_score,
+                "current_run_rate": current_score * 6 / balls_bowled,
+                "last_five": last_five,
+            }
+        ]
+    )
 
 
 def make_xgb_pipeline(**params) -> Pipeline:
-    encoder = ColumnTransformer(
-        [("cat", OneHotEncoder(handle_unknown="ignore"), CATEGORICAL)], remainder="passthrough"
-    )
+    encoder = ColumnTransformer([("cat", OneHotEncoder(handle_unknown="ignore"), CATEGORICAL)], remainder="passthrough")
     return Pipeline([("encode", encoder), ("model", XGBRegressor(**{**XGB_PARAMS, **params}))])
 
 
 def make_ridge_pipeline() -> Pipeline:
-    encoder = ColumnTransformer([
-        ("cat", OneHotEncoder(handle_unknown="ignore"), CATEGORICAL),
-        ("num", StandardScaler(), NUMERIC),
-    ])
+    encoder = ColumnTransformer(
+        [
+            ("cat", OneHotEncoder(handle_unknown="ignore"), CATEGORICAL),
+            ("num", StandardScaler(), NUMERIC),
+        ]
+    )
     return Pipeline([("encode", encoder), ("model", Ridge())])
 
 

@@ -1,4 +1,5 @@
 """Load and clean the Netflix titles catalogue (snapshot up to September 2021)."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -11,11 +12,21 @@ SNAPSHOT_END = pd.Timestamp("2021-09-30")
 # Content ratings grouped by intended audience. Ratings describe *who a title
 # is for*, not how good it is, so they are never averaged as a quality score.
 AUDIENCE = {
-    "TV-Y": "Kids", "TV-Y7": "Kids", "TV-Y7-FV": "Kids", "TV-G": "Kids", "G": "Kids",
-    "PG": "Older kids", "TV-PG": "Older kids",
-    "PG-13": "Teens", "TV-14": "Teens",
-    "R": "Adults", "TV-MA": "Adults", "NC-17": "Adults", "A": "Adults",
-    "NR": "Unrated", "UR": "Unrated",
+    "TV-Y": "Kids",
+    "TV-Y7": "Kids",
+    "TV-Y7-FV": "Kids",
+    "TV-G": "Kids",
+    "G": "Kids",
+    "PG": "Older kids",
+    "TV-PG": "Older kids",
+    "PG-13": "Teens",
+    "TV-14": "Teens",
+    "R": "Adults",
+    "TV-MA": "Adults",
+    "NC-17": "Adults",
+    "A": "Adults",
+    "NR": "Unrated",
+    "UR": "Unrated",
 }
 AUDIENCE_ORDER = ["Kids", "Older kids", "Teens", "Adults", "Unrated"]
 
@@ -48,7 +59,12 @@ def load_titles(path=DATA_PATH) -> pd.DataFrame:
     df["minutes"] = number.where(df["type"] == "Movie")
     df["seasons"] = number.where(df["type"] == "TV Show")
 
-    for col, new in [("listed_in", "genres"), ("country", "countries"), ("cast", "cast_list"), ("director", "directors")]:
+    for col, new in [
+        ("listed_in", "genres"),
+        ("country", "countries"),
+        ("cast", "cast_list"),
+        ("director", "directors"),
+    ]:
         df[new] = df[col].map(split_list)
     df["main_country"] = df["countries"].str[0]
     return df

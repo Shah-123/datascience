@@ -56,7 +56,10 @@ def main():
     st.dataframe(result.metrics.style.format("{:.3f}"), width="stretch")
 
     fig = px.scatter(
-        result.test, x="NA", y="Predicted_NA", opacity=0.4,
+        result.test,
+        x="NA",
+        y="Predicted_NA",
+        opacity=0.4,
         labels={"NA": "Reported NA", "Predicted_NA": "Predicted NA"},
         title="Predicted vs reported NA (test campaigns)",
     )
@@ -65,12 +68,8 @@ def main():
     st.plotly_chart(fig, width="stretch")
 
     st.subheader("Review a campaign")
-    campaigns = (
-        table.drop_duplicates("CAMP_ID").sort_values("campaign_order")[["CAMP_ID", "campaign_start"]]
-    )
-    labels = {
-        row.CAMP_ID: f"Campaign {row.CAMP_ID} ({row.campaign_start:%b %Y})" for row in campaigns.itertuples()
-    }
+    campaigns = table.drop_duplicates("CAMP_ID").sort_values("campaign_order")[["CAMP_ID", "campaign_start"]]
+    labels = {row.CAMP_ID: f"Campaign {row.CAMP_ID} ({row.campaign_start:%b %Y})" for row in campaigns.itertuples()}
     camp_id = st.selectbox("Campaign", list(labels), index=len(labels) - 1, format_func=labels.get)
     frame = table[table["CAMP_ID"] == camp_id]
     # The final model has seen every campaign, so in-sample campaigns will look

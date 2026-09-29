@@ -53,13 +53,20 @@ def explore(df):
     fig = px.histogram(subset, x="price", nbins=60, title=f"Distribution of {unit} (PKR)")
     c1.plotly_chart(fig, width="stretch")
     by_city = subset.groupby("city")["price_per_marla"].median().sort_values().reset_index()
-    fig = px.bar(by_city, x="price_per_marla", y="city", orientation="h",
-                 title=f"Median {unit} per marla by city (PKR)")
+    fig = px.bar(
+        by_city, x="price_per_marla", y="city", orientation="h", title=f"Median {unit} per marla by city (PKR)"
+    )
     c2.plotly_chart(fig, width="stretch")
 
     c1, c2 = st.columns(2)
-    fig = px.box(subset, x="property_type", y="price", points=False, log_y=True,
-                 title=f"{unit.capitalize()} by property type (log scale)")
+    fig = px.box(
+        subset,
+        x="property_type",
+        y="price",
+        points=False,
+        log_y=True,
+        title=f"{unit.capitalize()} by property type (log scale)",
+    )
     c1.plotly_chart(fig, width="stretch")
     counts = subset.groupby(["city", "property_type"]).size().reset_index(name="listings")
     fig = px.bar(counts, x="city", y="listings", color="property_type", title="Listings by city and property type")
@@ -77,9 +84,16 @@ def performance():
         metrics.style.format({"MAE (PKR)": "{:,.0f}", "MAPE": "{:.1%}", "Median APE": "{:.1%}", "R2": "{:.3f}"}),
         width="stretch",
     )
-    fig = px.scatter(test, x="price", y="predicted", opacity=0.25, log_x=True, log_y=True,
-                     labels={"price": "Actual (PKR)", "predicted": "Predicted (PKR)"},
-                     title="XGBoost: actual vs predicted (log scales)")
+    fig = px.scatter(
+        test,
+        x="price",
+        y="predicted",
+        opacity=0.25,
+        log_x=True,
+        log_y=True,
+        labels={"price": "Actual (PKR)", "predicted": "Predicted (PKR)"},
+        title="XGBoost: actual vs predicted (log scales)",
+    )
     lo, hi = test["price"].min(), test["price"].max()
     fig.add_shape(type="line", x0=lo, y0=lo, x1=hi, y1=hi, line=dict(dash="dash", color="red"))
     st.plotly_chart(fig, width="stretch")
@@ -87,7 +101,9 @@ def performance():
 
 def main():
     st.title("🏠 Pakistan Property Prices")
-    st.caption("Sale prices and monthly rents from online listings in Karachi, Lahore, Islamabad, Rawalpindi and Faisalabad.")
+    st.caption(
+        "Sale prices and monthly rents from online listings in Karachi, Lahore, Islamabad, Rawalpindi and Faisalabad."
+    )
     df, report = get_listings()
     predictor(get_bundle())
 

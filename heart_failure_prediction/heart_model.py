@@ -10,11 +10,11 @@ Data caveats handled here:
   Cross-validation keeps rows with the same age and sex in the same fold,
   which is stricter than a random split, but the scores remain optimistic.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
@@ -27,8 +27,17 @@ DATA_PATH = Path(__file__).parent / "data" / "heart_failure_clinical_records.csv
 TARGET = "DEATH_EVENT"
 LEAKY = ["time"]
 FEATURES = [
-    "age", "anaemia", "creatinine_phosphokinase", "diabetes", "ejection_fraction",
-    "high_blood_pressure", "platelets", "serum_creatinine", "serum_sodium", "sex", "smoking",
+    "age",
+    "anaemia",
+    "creatinine_phosphokinase",
+    "diabetes",
+    "ejection_fraction",
+    "high_blood_pressure",
+    "platelets",
+    "serum_creatinine",
+    "serum_sodium",
+    "sex",
+    "smoking",
 ]
 BASELINE_FEATURES = ["ejection_fraction", "serum_creatinine"]
 
@@ -69,13 +78,15 @@ def cross_validate_models(df: pd.DataFrame, n_splits: int = 5, seed: int = 42) -
             model.fit(train[features], train[TARGET])
             proba = model.predict_proba(test[features])[:, 1]
             pred = (proba >= 0.5).astype(int)
-            rows.append({
-                "Model": name,
-                "ROC-AUC": roc_auc_score(test[TARGET], proba),
-                "PR-AUC": average_precision_score(test[TARGET], proba),
-                "Recall": recall_score(test[TARGET], pred),
-                "Precision": precision_score(test[TARGET], pred),
-            })
+            rows.append(
+                {
+                    "Model": name,
+                    "ROC-AUC": roc_auc_score(test[TARGET], proba),
+                    "PR-AUC": average_precision_score(test[TARGET], proba),
+                    "Recall": recall_score(test[TARGET], pred),
+                    "Precision": precision_score(test[TARGET], pred),
+                }
+            )
     scores = pd.DataFrame(rows).groupby("Model", sort=False)
     return scores.mean().join(scores.std(), rsuffix=" std")
 
@@ -95,4 +106,3 @@ def risk_band(probability: float) -> str:
 
 def feature_importance(model) -> pd.Series:
     return pd.Series(model.feature_importances_, index=FEATURES).sort_values(ascending=False)
-
