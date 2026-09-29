@@ -1,395 +1,389 @@
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-import plotly.express as px
-import plotly.graph_objects as go
-import streamlit as st
+"""EDA Master: upload a CSV/Excel file and explore, clean and analyse it without code."""
 import io
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import plotly.express as px
+import seaborn as sns
+import statsmodels.api as sm
+import streamlit as st
 from scipy import stats
+from sklearn.cluster import AgglomerativeClustering, KMeans
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
-from wordcloud import WordCloud
-from textblob import TextBlob
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-from scipy.stats import boxcox
-import statsmodels.api as sm
-# import pandas_profiling
-# from streamlit_pandas_profiling import st_profile_report
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 
-# Set page config
+SAMPLE_PATH = Path(__file__).resolve().parent.parent / "student_performance" / "data" / "exams.csv"
+MAX_ROWS_TSNE = 2000
+
 st.set_page_config(page_title="EDA Master", page_icon="📊", layout="wide", initial_sidebar_state="expanded")
 
-# Custom CSS to improve UI
-st.markdown("""
-    <style>
-    .reportview-container {
-        background: linear-gradient(to right, #f0f2f6, #e0e2e6);
-    }
-    .sidebar .sidebar-content {
-        background: linear-gradient(to bottom, #f0f2f6, #d0d2d6);
-    }
-    .Widget>label {
-        color: #31333F;
-        font-weight: bold;
-    }
-    .stButton>button {
-        color: #ffffff;
-        background-color: #0068c9;
-        border-radius: 5px;
-    }
-    .stTextInput>div>div>input {
-        color: #31333F;
-    }
-    .stSelectbox>div>div>select {
-        color: #31333F;
-    }
-    h1 {
-        color: #0068c9;
-    }
-    h2 {
-        color: #31333F;
-    }
-    .stAlert > div {
-        color: #31333F;
-        background-color: #f0f2f6;
-        border: 2px solid #0068c9;
-        border-radius: 5px;
-        padding: 10px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
 
-# Add a title and subtitle
-st.title("📊 EDA Master")
-st.markdown("### Unleash the power of data exploration with our advanced EDA tool")
-
-# Function to load and display data
-def load_data(data):
-    st.subheader("🔎 Data Preview")
-    with st.expander("View Data Sample"):
-        st.dataframe(data.head(100))
-    
-    st.subheader("📊 Data Summary")
-    with st.expander("View Summary Statistics"):
-        col1, col2 = st.columns(2)
-        with col1:
-            st.dataframe(data.describe())
-        with col2:
-            buffer = io.StringIO()
-            data.info(buf=buffer)
-            st.text(buffer.getvalue())
-    
-    st.subheader("ℹ️ Data Information")
-    with st.expander("View Data Types and Non-Null Counts"):
-        st.write(data.dtypes)
-        st.write(data.isnull().sum())
-
-# Function for data preprocessing
-def Data_preprocessing(data):
-    st.subheader("🛠️ Data Preprocessing")
-    
-    with st.expander("Handle Missing Values"):
-        if data.isnull().sum().sum() == 0:
-            st.success("No missing values found in the dataset!")
-        else:
-            numeric_columns = data.select_dtypes(include=[np.number]).columns
-            categorical_columns = data.select_dtypes(exclude=[np.number]).columns
-            
-            for col in numeric_columns:
-                method = st.selectbox(f"Choose method for {col}", ["None", "Mean", "Median", "Mode", "Interpolation"])
-                if method != "None":
-                    if method == "Mean":
-                        data[col].fillna(data[col].mean(), inplace=True)
-                    elif method == "Median":
-                        data[col].fillna(data[col].median(), inplace=True)
-                    elif method == "Mode":
-                        data[col].fillna(data[col].mode()[0], inplace=True)
-                    elif method == "Interpolation":
-                        data[col].interpolate(method='linear', inplace=True)
-            
-            for col in categorical_columns:
-                method = st.selectbox(f"Choose method for {col}", ["None", "Mode", "New Category"])
-                if method != "None":
-                    if method == "Mode":
-                        data[col].fillna(data[col].mode()[0], inplace=True)
-                    elif method == "New Category":
-                        data[col].fillna("Unknown", inplace=True)
-
-    with st.expander("Feature Scaling"):
-        if st.checkbox("Apply Standard Scaling"):
-            scaler = StandardScaler()
-            numeric_columns = data.select_dtypes(include=[np.number]).columns
-            data[numeric_columns] = scaler.fit_transform(data[numeric_columns])
-    
-    with st.expander("Outlier Handling"):
-        numeric_columns = data.select_dtypes(include=[np.number]).columns
-        for col in numeric_columns:
-            if st.checkbox(f"Remove outliers in {col}"):
-                q1 = data[col].quantile(0.25)
-                q3 = data[col].quantile(0.75)
-                iqr = q3 - q1
-                lower_bound = q1 - 1.5 * iqr
-                upper_bound = q3 + 1.5 * iqr
-                data = data[(data[col] >= lower_bound) & (data[col] <= upper_bound)]
-
-    with st.expander("Data Transformation"):
-        numeric_columns = data.select_dtypes(include=[np.number]).columns
-        for col in numeric_columns:
-            transformation = st.selectbox(f"Transform {col}", ["None", "Log", "Square Root"])
-            if transformation != "None":
-                if transformation == "Log":
-                    data[col] = np.log1p(data[col])
-                elif transformation == "Square Root":
-                    data[col] = np.sqrt(data[col])
+def numeric_cols(df):
+    return df.select_dtypes(include=np.number).columns.tolist()
 
 
-    with st.expander("Encoding Categorical Variables"):
-        method = st.selectbox("Choose encoding method", ["None", "One-Hot Encoding", "Label Encoding"])
-        if method != "None":
-            if method == "One-Hot Encoding":
-                data = pd.get_dummies(data)
-            elif method == "Label Encoding":
-                le = LabelEncoder()
-                for col in data.select_dtypes(include=[object]).columns:
-                    data[col] = le.fit_transform(data[col])
-    
+def datetime_cols(df):
+    return df.select_dtypes(include="datetime").columns.tolist()
+
+
+def categorical_cols(df):
+    return [c for c in df.columns if c not in numeric_cols(df) and c not in datetime_cols(df)]
+
+
+@st.cache_data
+def read_file(name: str, content: bytes) -> pd.DataFrame:
+    if name.endswith(".xlsx"):
+        return pd.read_excel(io.BytesIO(content))
+    return pd.read_csv(io.BytesIO(content))
+
+
+def overview(data):
+    st.subheader("🔎 Overview")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Rows", f"{len(data):,}")
+    c2.metric("Columns", data.shape[1])
+    c3.metric("Missing cells", f"{int(data.isna().sum().sum()):,}")
+    c4.metric("Duplicate rows", f"{int(data.duplicated().sum()):,}")
+    with st.expander("Data sample"):
+        st.dataframe(data.head(100), width="stretch")
+    with st.expander("Column summary"):
+        summary = pd.DataFrame({
+            "dtype": data.dtypes.astype(str),
+            "missing": data.isna().sum(),
+            "missing %": (data.isna().mean() * 100).round(1),
+            "unique": data.nunique(),
+        })
+        st.dataframe(summary, width="stretch")
+    with st.expander("Descriptive statistics"):
+        st.dataframe(data.describe(include="all").T, width="stretch")
+
+
+def preprocess(data):
+    st.subheader("🛠️ Preprocessing")
+
+    with st.expander("Convert columns to dates"):
+        candidates = categorical_cols(data)
+        for col in st.multiselect("Columns to parse as dates", candidates, key="to_date"):
+            data[col] = pd.to_datetime(data[col], errors="coerce", format="mixed")
+            st.caption(f"{col}: {data[col].isna().sum()} values could not be parsed.")
+
+    with st.expander("Handle missing values"):
+        missing = [c for c in data.columns if data[c].isna().any()]
+        if not missing:
+            st.success("No missing values.")
+        if st.checkbox("Drop duplicate rows", key="drop_dups"):
+            data = data.drop_duplicates()
+        for col in missing:
+            is_numeric = col in numeric_cols(data)
+            options = ["Keep", "Drop rows", "Mean", "Median", "Mode", "Interpolate"] if is_numeric else \
+                ["Keep", "Drop rows", "Mode", "Fill with 'Unknown'"]
+            method = st.selectbox(f"{col} ({data[col].isna().sum()} missing)", options, key=f"missing_{col}")
+            # Assign back instead of inplace=True, which does nothing on a
+            # column under pandas copy-on-write.
+            if method == "Drop rows":
+                data = data.dropna(subset=[col])
+            elif method == "Mean":
+                data[col] = data[col].fillna(data[col].mean())
+            elif method == "Median":
+                data[col] = data[col].fillna(data[col].median())
+            elif method == "Mode":
+                data[col] = data[col].fillna(data[col].mode().iloc[0])
+            elif method == "Interpolate":
+                data[col] = data[col].interpolate()
+            elif method == "Fill with 'Unknown'":
+                data[col] = data[col].fillna("Unknown")
+
+    with st.expander("Drop columns"):
+        to_drop = st.multiselect("Columns to drop", data.columns, key="drop_cols")
+        data = data.drop(columns=to_drop)
+
+    with st.expander("Remove outliers (1.5 × IQR rule)"):
+        for col in st.multiselect("Columns", numeric_cols(data), key="outliers"):
+            q1, q3 = data[col].quantile([0.25, 0.75])
+            iqr = q3 - q1
+            before = len(data)
+            data = data[data[col].between(q1 - 1.5 * iqr, q3 + 1.5 * iqr) | data[col].isna()]
+            st.caption(f"{col}: removed {before - len(data)} rows.")
+
+    with st.expander("Transform skewed columns"):
+        for col in numeric_cols(data):
+            if data[col].min() < 0:
+                continue  # log/sqrt are undefined for negative values
+            choice = st.selectbox(f"Transform {col}", ["None", "Log (log1p)", "Square root"], key=f"tf_{col}")
+            if choice == "Log (log1p)":
+                data[col] = np.log1p(data[col])
+            elif choice == "Square root":
+                data[col] = np.sqrt(data[col])
+        st.caption("Columns with negative values are not listed.")
+
+    with st.expander("Scale and encode"):
+        if st.checkbox("Standard-scale numeric columns", key="scale"):
+            cols = numeric_cols(data)
+            data[cols] = StandardScaler().fit_transform(data[cols])
+        method = st.selectbox("Encode categorical columns", ["None", "One-hot", "Label"], key="encode")
+        cats = categorical_cols(data)
+        if method == "One-hot":
+            data = pd.get_dummies(data, columns=cats, dtype=int)
+        elif method == "Label":
+            for col in cats:
+                data[col] = LabelEncoder().fit_transform(data[col].astype(str))
     return data
 
-def Drop_columns(data):
-    st.subheader("🗑️ Drop Columns")
 
-    with st.expander("Drop Columns"):
-        col_to_drop = st.multiselect("Select columns to drop", data.columns)
-        if col_to_drop:
-            data = data.drop(col_to_drop, axis=1)
-    
-    return data
-
-# Function for feature engineering
 def feature_engineering(data):
-    st.subheader("🔧 Feature Engineering")
-    
-    with st.expander("Create Binned Features"):
-        numeric_columns = data.select_dtypes(include=[np.number]).columns
-        for col in numeric_columns:
-            if st.checkbox(f"Bin {col}"):
-                n_bins = st.slider(f"Number of bins for {col}", 2, 10, 5)
-                data[f"{col}_binned"] = pd.cut(data[col], bins=n_bins)
-    
-    with st.expander("Extract Date Features"):
-        date_columns = data.select_dtypes(include=['datetime64']).columns
-        for col in date_columns:
-            if st.checkbox(f"Extract features from {col}"):
-                data[f"{col}_year"] = data[col].dt.year
-                data[f"{col}_month"] = data[col].dt.month
-                data[f"{col}_day"] = data[col].dt.day
-                data[f"{col}_dayofweek"] = data[col].dt.dayofweek
-    
+    st.subheader("🔧 Feature engineering")
+    with st.expander("Bin numeric columns"):
+        for col in st.multiselect("Columns", numeric_cols(data), key="bin_cols"):
+            bins = st.slider(f"Bins for {col}", 2, 10, 4, key=f"bins_{col}")
+            data[f"{col}_binned"] = pd.cut(data[col], bins=bins).astype(str)
+    with st.expander("Extract date parts"):
+        dates = datetime_cols(data)
+        if not dates:
+            st.caption("No date columns. Convert one under Preprocessing → Convert columns to dates.")
+        for col in st.multiselect("Columns", dates, key="date_parts"):
+            data[f"{col}_year"] = data[col].dt.year
+            data[f"{col}_month"] = data[col].dt.month
+            data[f"{col}_dayofweek"] = data[col].dt.dayofweek
     return data
 
-# Function for statistical analysis
+
 def statistical_analysis(data):
-    st.subheader("📈 Statistical Analysis")
-    
-    with st.expander("Descriptive Statistics"):
-        st.dataframe(data.describe())
-    
-    with st.expander("Correlation Analysis"):
-        corr = data.corr()
-        fig, ax = plt.subplots(figsize=(10, 8))
-        sns.heatmap(corr, annot=True, cmap='coolwarm', ax=ax)
-        st.pyplot(fig)
-    
-    with st.expander("Hypothesis Testing"):
-        test_type = st.selectbox("Choose test type", ["T-Test", "ANOVA", "Chi-Square", "Mann-Whitney U"])
-        col1 = st.selectbox("Select first column", data.columns)
-        col2 = st.selectbox("Select second column", data.columns)
-        if test_type == "T-Test":
-            t_stat, p_value = stats.ttest_ind(data[col1], data[col2])
-            st.write(f"T-Statistic: {t_stat}, P-Value: {p_value}")
-        elif test_type == "ANOVA":
-            st.write("ANOVA test not implemented in this example")
-        elif test_type == "Chi-Square":
-            st.write("Chi-Square test not implemented in this example")
-        elif test_type == "Mann-Whitney U":
-            u_stat, p_value = stats.mannwhitneyu(data[col1], data[col2])
-            st.write(f"U-Statistic: {u_stat}, P-Value: {p_value}")
+    st.subheader("📈 Statistical analysis")
+    nums, cats = numeric_cols(data), categorical_cols(data)
+    with st.expander("Correlation matrix", expanded=True):
+        if len(nums) < 2:
+            st.info("Needs at least two numeric columns.")
+        else:
+            method = st.radio("Method", ["pearson", "spearman"], horizontal=True, key="corr_method")
+            fig, ax = plt.subplots(figsize=(min(2 + len(nums), 14), min(1.5 + 0.8 * len(nums), 12)))
+            sns.heatmap(data[nums].corr(method=method), annot=len(nums) <= 15, fmt=".2f", cmap="coolwarm",
+                        vmin=-1, vmax=1, ax=ax)
+            st.pyplot(fig)
 
-# Function for visualizations
+    with st.expander("Hypothesis tests", expanded=True):
+        test = st.selectbox("Test", [
+            "Compare two groups (t-test / Mann-Whitney U)",
+            "Compare several groups (ANOVA / Kruskal-Wallis)",
+            "Association between two categorical columns (chi-square)",
+        ], key="test")
+        if test.startswith("Association"):
+            if len(cats) < 2:
+                st.info("Needs at least two categorical columns.")
+                return
+            a = st.selectbox("First column", cats, key="chi_a")
+            b = st.selectbox("Second column", [c for c in cats if c != a], key="chi_b")
+            table = pd.crosstab(data[a], data[b])
+            chi2, p, dof, _ = stats.chi2_contingency(table)
+            st.dataframe(table, width="stretch")
+            report(p, f"χ² = {chi2:.2f}, degrees of freedom = {dof}", f"{a} and {b} are associated")
+            return
+
+        if not nums or not cats:
+            st.info("Needs a numeric column and a categorical grouping column.")
+            return
+        value = st.selectbox("Numeric column", nums, key="test_value")
+        group = st.selectbox("Group by", cats, key="test_group")
+        groups = {k: g[value].dropna() for k, g in data.groupby(group) if g[value].notna().sum() >= 2}
+        if len(groups) < 2:
+            st.info("Needs at least two groups with two or more values.")
+            return
+        if test.startswith("Compare two"):
+            pair = st.multiselect("Pick two groups", list(groups), default=list(groups)[:2], max_selections=2, key="test_pair")
+            if len(pair) != 2:
+                st.info("Pick exactly two groups.")
+                return
+            g1, g2 = pair
+            t = stats.ttest_ind(groups[g1], groups[g2], equal_var=False)
+            u = stats.mannwhitneyu(groups[g1], groups[g2])
+            report(t.pvalue, f"Welch t = {t.statistic:.3f}", f"mean {value} differs between {g1} and {g2}")
+            report(u.pvalue, f"Mann-Whitney U = {u.statistic:.0f} (no normality assumption)", "the distributions differ")
+        else:
+            f = stats.f_oneway(*groups.values())
+            k = stats.kruskal(*groups.values())
+            report(f.pvalue, f"ANOVA F = {f.statistic:.3f}", f"mean {value} differs across {group} groups")
+            report(k.pvalue, f"Kruskal-Wallis H = {k.statistic:.3f} (no normality assumption)", "the distributions differ")
+        fig = px.box(data, x=group, y=value, points=False, title=f"{value} by {group}")
+        st.plotly_chart(fig, width="stretch")
+
+
+def report(p, detail, finding, alpha=0.05):
+    verdict = f"✅ Significant at α = {alpha}: {finding}." if p < alpha else f"❌ Not significant at α = {alpha}."
+    st.write(f"{detail}, p-value = {p:.4g}. {verdict}")
+
+
 def visualization(data):
-    st.subheader("🎨 Data Visualization")
-    
-    plot_type = st.selectbox("Choose Plot Type", [
-        "Scatter Plot", "Line Plot", "Histogram", "Box Plot", "Violin Plot",
-        "Bar Plot", "Pie Chart", "Pair Plot", "Heatmap"
-    ])
-    
-    if plot_type == "Scatter Plot":
-        x_col = st.selectbox("X-Axis", data.columns)
-        y_col = st.selectbox("Y-Axis", data.columns)
-        fig = px.scatter(data, x=x_col, y=y_col)
-        st.plotly_chart(fig)
-    
-    elif plot_type == "Line Plot":
-        x_col = st.selectbox("X-Axis", data.columns)
-        y_col = st.selectbox("Y-Axis", data.columns)
-        fig = px.line(data, x=x_col, y=y_col)
-        st.plotly_chart(fig)
-    
-    elif plot_type == "Histogram":
-        col = st.selectbox("Select Column", data.columns)
-        fig = px.histogram(data, x=col)
-        st.plotly_chart(fig)
-    
-    elif plot_type == "Box Plot":
-        col = st.selectbox("Select Column", data.columns)
-        fig = px.box(data, y=col)
-        st.plotly_chart(fig)
-    
-    elif plot_type == "Violin Plot":
-        col = st.selectbox("Select Column", data.columns)
-        fig = px.violin(data, y=col)
-        st.plotly_chart(fig)
-    
-    elif plot_type == "Bar Plot":
-        col = st.selectbox("Select Column", data.columns)
-        fig = px.bar(data, x=col, y=data.index)
-        st.plotly_chart(fig)
-    
-    elif plot_type == "Pie Chart":
-        col = st.selectbox("Select Column", data.columns)
-        fig = px.pie(data, names=col)
-        st.plotly_chart(fig)
-    
-    elif plot_type == "Pair Plot":
-        sns.pairplot(data)
-        st.pyplot()
-    
-    elif plot_type == "Heatmap":
-        fig, ax = plt.subplots(figsize=(10, 8))
-        sns.heatmap(data.corr(), annot=True, cmap='coolwarm', ax=ax)
-        st.pyplot(fig)
+    st.subheader("🎨 Visualisation")
+    nums, cols = numeric_cols(data), data.columns.tolist()
+    kind = st.selectbox("Plot type", ["Histogram", "Box plot", "Violin plot", "Scatter plot", "Line plot",
+                                      "Bar chart (counts)", "Pie chart", "Pair plot"], key="plot_kind")
+    color = st.selectbox("Colour by (optional)", ["None"] + categorical_cols(data), key="plot_color")
+    color = None if color == "None" else color
+    if kind in ("Histogram", "Box plot", "Violin plot"):
+        col = st.selectbox("Column", nums or cols, key="plot_col")
+        fn = {"Histogram": px.histogram, "Box plot": px.box, "Violin plot": px.violin}[kind]
+        fig = fn(data, x=col, color=color) if kind == "Histogram" else fn(data, y=col, x=color, color=color)
+    elif kind in ("Scatter plot", "Line plot"):
+        x = st.selectbox("X axis", cols, key="plot_x")
+        y = st.selectbox("Y axis", nums or cols, key="plot_y")
+        fn = px.scatter if kind == "Scatter plot" else px.line
+        fig = fn(data.sort_values(x) if kind == "Line plot" else data, x=x, y=y, color=color)
+    elif kind in ("Bar chart (counts)", "Pie chart"):
+        col = st.selectbox("Column", cols, key="plot_col_cat")
+        counts = data[col].astype(str).value_counts()
+        if len(counts) > 15:
+            counts = pd.concat([counts.head(14), pd.Series({"Other": counts.iloc[14:].sum()})])
+        counts = counts.rename_axis(col).reset_index(name="count")
+        fig = px.bar(counts, x=col, y="count") if kind.startswith("Bar") else px.pie(counts, names=col, values="count")
+    else:
+        chosen = st.multiselect("Columns (up to 6)", nums, default=nums[:4], max_selections=6, key="pair_cols")
+        if len(chosen) < 2:
+            st.info("Pick at least two numeric columns.")
+            return
+        sample = data.sample(min(len(data), 2000), random_state=0)
+        grid = sns.pairplot(sample, vars=chosen, hue=color, corner=True)
+        st.pyplot(grid.figure)
+        return
+    st.plotly_chart(fig, width="stretch")
 
-# Function for natural language processing
-def nlp_analysis(data):
-    st.subheader("🗣️ Natural Language Processing")
-    
-    with st.expander("Word Cloud"):
-        col = st.selectbox("Select Text Column for Word Cloud", data.columns)
-        text = ' '.join(data[col].astype(str).tolist())
-        wordcloud = WordCloud(width=800, height=400, background_color='white').generate(text)
-        fig, ax = plt.subplots(figsize=(10, 8))
-        ax.imshow(wordcloud, interpolation='bilinear')
-        ax.axis("off")
-        st.pyplot(fig)
-    
-    with st.expander("Sentiment Analysis"):
-        col = st.selectbox("Select Text Column for Sentiment Analysis", data.columns)
-        data['Sentiment'] = data[col].apply(lambda x: TextBlob(str(x)).sentiment.polarity)
-        fig = px.histogram(data, x='Sentiment')
-        st.plotly_chart(fig)
 
-# Function for clustering
+def text_analysis(data):
+    st.subheader("🗣️ Text analysis")
+    texts = categorical_cols(data)
+    if not texts:
+        st.info("No text columns in this dataset.")
+        return
+    col = st.selectbox("Text column", texts, key="text_col")
+    text = " ".join(data[col].dropna().astype(str))
+    if not text.strip():
+        st.info("The column is empty.")
+        return
+    from wordcloud import WordCloud
+
+    cloud = WordCloud(width=900, height=400, background_color="white").generate(text)
+    fig, ax = plt.subplots(figsize=(10, 4.5))
+    ax.imshow(cloud, interpolation="bilinear")
+    ax.axis("off")
+    st.pyplot(fig)
+    if st.checkbox("Run sentiment analysis (TextBlob polarity)", key="sentiment"):
+        from textblob import TextBlob
+
+        polarity = data[col].dropna().astype(str).map(lambda t: TextBlob(t).sentiment.polarity)
+        st.plotly_chart(px.histogram(polarity, nbins=40, labels={"value": "polarity (-1 negative to +1 positive)"},
+                                     title=f"Sentiment of {col}"), width="stretch")
+
+
 def clustering(data):
     st.subheader("🔍 Clustering")
-    
-    n_clusters = st.slider("Select Number of Clusters", 2, 10, 3)
-    method = st.selectbox("Choose Clustering Method", ["KMeans", "Agglomerative Clustering"])
-    
-    if method == "KMeans":
-        from sklearn.cluster import KMeans
-        model = KMeans(n_clusters=n_clusters)
-    elif method == "Agglomerative Clustering":
-        from sklearn.cluster import AgglomerativeClustering
-        model = AgglomerativeClustering(n_clusters=n_clusters)
-    
-    numeric_columns = data.select_dtypes(include=[np.number]).columns
-    if len(numeric_columns) < 2:
-        st.warning("Clustering requires at least two numeric columns.")
-    else:
-        model.fit(data[numeric_columns])
-        data['Cluster'] = model.labels_
-        fig = px.scatter_matrix(data, dimensions=numeric_columns, color='Cluster')
-        st.plotly_chart(fig)
+    nums = numeric_cols(data)
+    features = st.multiselect("Features", nums, default=nums[:5], key="cluster_features")
+    if len(features) < 2:
+        st.info("Pick at least two numeric columns.")
+        return
+    X = data[features].dropna()
+    if len(X) < 10:
+        st.info("Not enough complete rows.")
+        return
+    n = st.slider("Number of clusters", 2, 10, 3, key="n_clusters")
+    method = st.selectbox("Method", ["K-Means", "Agglomerative"], key="cluster_method")
+    scaled = StandardScaler().fit_transform(X)
+    model = KMeans(n_clusters=n, n_init=10, random_state=42) if method == "K-Means" else AgglomerativeClustering(n_clusters=n)
+    labels = pd.Series(model.fit_predict(scaled), index=X.index).astype(str)
+    st.caption(f"Features are standardised first. {len(data) - len(X)} rows with missing values were skipped.")
+    st.dataframe(X.groupby(labels).mean().round(2).assign(size=labels.value_counts()), width="stretch")
+    coords = PCA(n_components=2).fit_transform(scaled)
+    fig = px.scatter(x=coords[:, 0], y=coords[:, 1], color=labels, labels={"x": "PC 1", "y": "PC 2", "color": "cluster"},
+                     title="Clusters projected onto the first two principal components")
+    st.plotly_chart(fig, width="stretch")
 
-# Function for dimensionality reduction
+
 def dimensionality_reduction(data):
-    st.subheader("🔻 Dimensionality Reduction")
-    
-    method = st.selectbox("Choose Method", ["PCA", "t-SNE"])
-    n_components = st.slider("Select Number of Components", 2, 10, 2)
-    
-    numeric_columns = data.select_dtypes(include=[np.number]).columns
-    if len(numeric_columns) < n_components:
-        st.warning(f"Selected number of components ({n_components}) is greater than the number of numeric columns ({len(numeric_columns)}).")
+    st.subheader("🔻 Dimensionality reduction")
+    nums = numeric_cols(data)
+    if len(nums) < 3:
+        st.info("Needs at least three numeric columns.")
+        return
+    X = data[nums].dropna()
+    method = st.selectbox("Method", ["PCA", "t-SNE"], key="dr_method")
+    color = st.selectbox("Colour by (optional)", ["None"] + categorical_cols(data), key="dr_color")
+    scaled = StandardScaler().fit_transform(X)
+    if method == "PCA":
+        pca = PCA().fit(scaled)
+        explained = pd.Series(pca.explained_variance_ratio_.cumsum(), index=range(1, len(nums) + 1))
+        st.plotly_chart(px.line(explained, markers=True, labels={"index": "components", "value": "cumulative variance explained"},
+                                title="Explained variance"), width="stretch")
+        coords = pca.transform(scaled)[:, :2]
+        index = X.index
     else:
-        if method == "PCA":
-            model = PCA(n_components=n_components)
-        elif method == "t-SNE":
-            model = TSNE(n_components=n_components)
-        
-        reduced_data = model.fit_transform(data[numeric_columns])
-        reduced_df = pd.DataFrame(reduced_data, columns=[f"Component_{i+1}" for i in range(n_components)])
-        reduced_df['Cluster'] = data['Cluster'] if 'Cluster' in data.columns else 0
-        fig = px.scatter_matrix(reduced_df, dimensions=reduced_df.columns[:-1], color='Cluster')
-        st.plotly_chart(fig)
+        index = X.sample(min(len(X), MAX_ROWS_TSNE), random_state=0).index
+        coords = TSNE(n_components=2, random_state=42, init="pca").fit_transform(scaled[X.index.get_indexer(index)])
+        st.caption(f"t-SNE uses up to {MAX_ROWS_TSNE:,} sampled rows.")
+    hue = None if color == "None" else data.loc[index, color].astype(str)
+    fig = px.scatter(x=coords[:, 0], y=coords[:, 1], color=hue, labels={"x": "component 1", "y": "component 2"}, opacity=0.6)
+    st.plotly_chart(fig, width="stretch")
 
-# # Function for generating pandas profiling report
-# def generate_eda_report(data):
-#     st.subheader("📋 Automated EDA Report")
-#     report = data.profile_report(title="Pandas Profiling Report")
-#     st_profile_report(report)
 
-# Function for time series analysis
-def time_series_analysis(data):
-    st.subheader("⏰ Time Series Analysis")
-    
-    date_col = st.selectbox("Select Date Column", data.select_dtypes(include=['datetime64']).columns)
-    value_col = st.selectbox("Select Value Column", data.select_dtypes(include=[np.number]).columns)
-    
-    data.set_index(date_col, inplace=True)
-    decomposition = sm.tsa.seasonal_decompose(data[value_col], model='additive')
-    fig = decomposition.plot()
+def time_series(data):
+    st.subheader("⏰ Time series")
+    dates, nums = datetime_cols(data), numeric_cols(data)
+    if not dates or not nums:
+        st.info("Needs a date column (see Preprocessing → Convert columns to dates) and a numeric column.")
+        return
+    date_col = st.selectbox("Date column", dates, key="ts_date")
+    value_col = st.selectbox("Value column", nums, key="ts_value")
+    freq = st.selectbox("Aggregate by", {"D": "Day", "W": "Week", "MS": "Month", "QS": "Quarter"}.items(),
+                        index=2, format_func=lambda kv: kv[1], key="ts_freq")[0]
+    how = st.radio("Aggregation", ["mean", "sum"], horizontal=True, key="ts_how")
+    series = data.set_index(date_col)[value_col].resample(freq).agg(how).dropna()
+    st.plotly_chart(px.line(series, title=f"{how} of {value_col} per period"), width="stretch")
+    period = st.number_input("Seasonal period (in periods)", 2, 365, 12 if freq == "MS" else 7, key="ts_period")
+    if len(series) < 2 * period:
+        st.info(f"Seasonal decomposition needs at least {2 * period} periods; there are {len(series)}.")
+        return
+    fig = sm.tsa.seasonal_decompose(series, model="additive", period=int(period)).plot()
+    fig.set_size_inches(10, 7)
     st.pyplot(fig)
 
-# Main app logic
+
+ANALYSES = {
+    "Statistical analysis": statistical_analysis,
+    "Visualisation": visualization,
+    "Text analysis": text_analysis,
+    "Clustering": clustering,
+    "Dimensionality reduction": dimensionality_reduction,
+    "Time series": time_series,
+}
+
+
 def main():
-    st.sidebar.title("Upload and Settings")
-    
-    uploaded_file = st.sidebar.file_uploader("Choose a file", type=["csv", "xlsx"])
-    
-    if uploaded_file:
-        if uploaded_file.name.endswith(".csv"):
-            data = pd.read_csv(uploaded_file)
-        elif uploaded_file.name.endswith(".xlsx"):
-            data = pd.read_excel(uploaded_file)
-        
-        load_data(data)
-        
-        data = Data_preprocessing(data)
-        data = Drop_columns(data)
-        data = feature_engineering(data)
-        
-        analysis_type = st.sidebar.selectbox("Choose Analysis Type", [
-            "Statistical Analysis", "Data Visualization", "Natural Language Processing",
-            "Clustering", "Dimensionality Reduction", "Automated EDA Report", "Time Series Analysis"
-        ])
-        
-        if analysis_type == "Statistical Analysis":
-            statistical_analysis(data)
-        elif analysis_type == "Data Visualization":
-            visualization(data)
-        elif analysis_type == "Natural Language Processing":
-            nlp_analysis(data)
-        elif analysis_type == "Clustering":
-            clustering(data)
-        elif analysis_type == "Dimensionality Reduction":
-            dimensionality_reduction(data)
-        # elif analysis_type == "Automated EDA Report":
-        #     generate_eda_report(data)
-        elif analysis_type == "Time Series Analysis":
-            time_series_analysis(data)
+    st.title("📊 EDA Master")
+    st.markdown("Upload a dataset to explore, clean and analyse it without writing code.")
+
+    st.sidebar.header("Data")
+    uploaded = st.sidebar.file_uploader("CSV or Excel file", type=["csv", "xlsx"])
+    use_sample = st.sidebar.checkbox("Use sample data (student exam scores)", value=uploaded is None)
+    if uploaded is not None:
+        data = read_file(uploaded.name, uploaded.getvalue())
+    elif use_sample:
+        data = pd.read_csv(SAMPLE_PATH)
+    else:
+        st.info("👈 Upload a file or tick 'Use sample data' to begin.")
+        return
+
+    data = data.copy()
+    overview(data)
+    data = preprocess(data)
+    data = feature_engineering(data)
+    if data.empty:
+        st.warning("No rows left after preprocessing.")
+        return
+
+    analysis = st.sidebar.radio("Analysis", list(ANALYSES))
+    ANALYSES[analysis](data)
+    st.sidebar.download_button("📥 Download processed data", data.to_csv(index=False), "processed_data.csv", "text/csv")
+
 
 if __name__ == "__main__":
     main()
