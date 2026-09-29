@@ -1,145 +1,86 @@
+import plotly.express as px
 import streamlit as st
-import pandas as pd
-import matplotlib.pyplot as plt
-from collections import Counter
 
-# Load your dataset
-df = pd.read_csv('data/netflix_titles.csv',encoding= "ISO-8859-1")
+import netflix_data as nd
 
-# Set page configuration
-st.set_page_config(page_title='Netflix Analysis', layout='wide')
+st.set_page_config(page_title="Netflix Catalogue Analysis", page_icon="🎬", layout="wide")
 
-st.title('Netflix Data Analysis')
 
-# Sidebar for navigation
-st.sidebar.title('Navigation')
-options = st.sidebar.selectbox('Select a Visualization:', 
-                               ['Content Type Count', 'Rating Distribution', 'Movies Released Each Year', 
-                                'Top Directors by Average Rating', 'Top Genres', 'Content Additions by Year',
-                                'Top Actors', 'Duration Distribution', 'Content Types by Year'])
+@st.cache_data
+def get_titles():
+    return nd.load_titles()
 
-# Function to plot Content Type Count
-def plot_content_type_count():
-    content_values_counts = df['type'].value_counts()
-    fig, ax = plt.subplots(figsize=(16,9))
-    content_values_counts.plot(kind='bar', color=['blue', 'red'], ax=ax)
-    ax.set_xlabel('Type')
-    ax.set_ylabel('Count')
-    ax.set_title('Content Type Count')
-    st.pyplot(fig)
 
-def plot_rating_distribution():
-    rating_value_counts = df['rating'].value_counts()
-    fig, ax = plt.subplots(figsize=(10,6))
-    rating_value_counts.plot(kind='barh', color=['red', 'green', 'blue'], ax=ax)
-    ax.set_xlabel('Count')
-    ax.set_ylabel('Rating')
-    ax.set_title('Rating Distribution')
-    st.pyplot(fig)
+def main():
+    st.title("🎬 Netflix Catalogue Analysis")
+    st.caption("8,807 movies and TV shows on Netflix, snapshot up to September 2021.")
+    df = get_titles()
 
-def plot_movies_released_each_year():
-    release_year_count = df['release_year'].value_counts().sort_index()
-    fig, ax = plt.subplots(figsize=(10,6))
-    release_year_count.plot(kind='line', ax=ax)
-    ax.set_title('Number of Movies Released Each Year')
-    ax.set_xlabel('Year')
-    ax.set_ylabel('Count')
-    ax.grid(True)
-    st.pyplot(fig)
+    st.sidebar.header("Filters")
+    types = st.sidebar.multiselect("Type", ["Movie", "TV Show"], default=["Movie", "TV Show"])
+    first, last = int(df["year_added"].min()), int(df["year_added"].max())
+    years = st.sidebar.slider("Year added to Netflix", first, last, (2015, last))
+    view = df[df["type"].isin(types) & df["year_added"].between(*years)]
+    if view.empty:
+        st.warning("No titles match the filters.")
+        st.stop()
 
-# Function to plot Top Directors by Average Rating
-def plot_top_directors():
-    rating_map = {
-        'TV-Y': 0, 'TV-Y7': 7, 'TV-Y7-FV': 7, 'TV-G': 7, 'TV-PG': 12, 
-        'TV-14': 14, 'TV-MA': 18, 'R': 18, 'NC-17': 18, 'NR': None
-    }
-    df['rating_numeric'] = df['rating'].map(rating_map)
-    director_ratings = df.groupby('director')['rating_numeric'].agg(['mean', 'count'])
-    director_ratings = director_ratings[director_ratings['count'] >= 10]
-    director_ratings = director_ratings.sort_values(by='mean', ascending=False).head(15)
-    fig, ax = plt.subplots(figsize=(10,6))
-    director_ratings['mean'].plot(kind='bar', color=['red', 'blue', 'green'], ax=ax)
-    ax.set_title('Directors with Highest Average Ratings on Netflix (Minimum 10 Entries)')
-    ax.set_xlabel('Director')
-    ax.set_ylabel('Average Rating')
-    ax.set_xticklabels(director_ratings.index, rotation=45, ha='right')
-    st.pyplot(fig)
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Titles", f"{len(view):,}")
+    c2.metric("Movies", f"{(view['type'] == 'Movie').mean():.0%}")
+    c3.metric("Countries", view["countries"].explode().nunique())
+    c4.metric("Median years from release to Netflix", f"{view['years_to_netflix'].median():.0f}")
 
-def plot_top_genres():
-    genres = df['listed_in'].apply(lambda x: x.split(', '))
-    genre_counts = Counter(genre for sublist in genres for genre in sublist)
-    top_genres = dict(genre_counts.most_common(10))
-    fig, ax = plt.subplots(figsize=(10,6))
-    ax.barh(list(top_genres.keys()), list(top_genres.values()), color='red')
-    ax.set_title('Top 10 Most Common Genres on Netflix')
-    ax.set_xlabel('Count')
-    ax.set_ylabel('Genre')
-    ax.invert_yaxis()
-    st.pyplot(fig)
+    tab1, tab2, tab3, tab4 = st.tabs(["Growth", "Audience & genres", "Countries", "Duration & people"])
 
-def plot_content_additions_by_year():
-    df['date_added'] = df['date_added'].str.strip()
-    df['date_added'] = pd.to_datetime(df['date_added'], format='%B %d, %Y')
-    df['year_added'] = df['date_added'].dt.year
-    content_additions_by_year = df['year_added'].value_counts().sort_index()
-    fig, ax = plt.subplots(figsize=(10,6))
-    content_additions_by_year.plot(kind='line', marker='o', color='orange', ax=ax)
-    ax.set_title('Trends of Content Additions to Netflix (Yearly)')
-    ax.set_xlabel('Year')
-    ax.set_ylabel('Number of Content Additions')
-    ax.grid(True)
-    st.pyplot(fig)
+    with tab1:
+        added = view.groupby(["year_added", "type"]).size().reset_index(name="titles")
+        fig = px.bar(added, x="year_added", y="titles", color="type", title="Titles added per year")
+        st.plotly_chart(fig, width="stretch")
+        st.caption("2021 only covers January to September.")
+        fig = px.histogram(view, x="years_to_netflix", color="type", nbins=60, barmode="overlay",
+                           title="Years between release and arrival on Netflix", range_x=[-1, 40])
+        st.plotly_chart(fig, width="stretch")
 
-def plot_top_actors():
-    actors = df['cast'].dropna().apply(lambda x: x.split(', '))
-    actor_counts = Counter(actor for sublist in actors for actor in sublist)
-    top_actors = dict(actor_counts.most_common(10))
-    fig, ax = plt.subplots(figsize=(10,6))
-    ax.barh(list(top_actors.keys()), list(top_actors.values()), color='purple')
-    ax.set_title('Top 10 Most Frequent Actors on Netflix')
-    ax.set_xlabel('Count')
-    ax.set_ylabel('Actor')
-    ax.invert_yaxis()
-    st.pyplot(fig)
+    with tab2:
+        c1, c2 = st.columns(2)
+        share = view.groupby("type")["audience"].value_counts(normalize=True).mul(100)
+        audience = share.reset_index(name="percent")
+        fig = px.bar(audience, x="percent", y="type", color="audience", orientation="h",
+                     category_orders={"audience": nd.AUDIENCE_ORDER}, title="Intended audience (share of titles, %)")
+        c1.plotly_chart(fig, width="stretch")
+        genres = nd.explode_counts(view, "genres", 12).sort_values()
+        fig = px.bar(x=genres.values, y=genres.index, orientation="h", labels={"x": "titles", "y": ""},
+                     title="Most common genres")
+        c2.plotly_chart(fig, width="stretch")
 
-def plot_duration_distribution():
-    df['duration'] = df['duration'].fillna('0 min')
-    df['duration'] = df['duration'].apply(lambda x: int(x.split(' ')[0]) if 'min' in x else 0)
-    fig, ax = plt.subplots(figsize=(10,6))
-    ax.hist(df['duration'], bins=30, color='green', edgecolor='black')
-    ax.set_title('Distribution of Movie Durations')
-    ax.set_xlabel('Duration (minutes)')
-    ax.set_ylabel('Count')
-    st.pyplot(fig)
+    with tab3:
+        countries = nd.explode_counts(view, "countries", 15).sort_values()
+        fig = px.bar(x=countries.values, y=countries.index, orientation="h", labels={"x": "titles", "y": ""},
+                     title="Countries producing the most titles (co-productions count for each country)")
+        st.plotly_chart(fig, width="stretch")
+        top = nd.explode_counts(view, "countries", 5).index
+        trend = view.explode("countries").query("countries in @top").groupby(["year_added", "countries"]).size()
+        fig = px.line(trend.reset_index(name="titles"), x="year_added", y="titles", color="countries", markers=True,
+                      title="Titles added per year from the top 5 countries")
+        st.plotly_chart(fig, width="stretch")
 
-def plot_content_types_by_year():
-    df['date_added'] = df['date_added'].str.strip()
-    df['date_added'] = pd.to_datetime(df['date_added'], format='%B %d, %Y')
-    df['year_added'] = df['date_added'].dt.year
-    content_types_by_year = df.groupby(['year_added', 'type']).size().unstack().fillna(0)
-    fig, ax = plt.subplots(figsize=(10,6))
-    content_types_by_year.plot(kind='bar', stacked=True, ax=ax)
-    ax.set_title('Content Types Added to Netflix by Year')
-    ax.set_xlabel('Year')
-    ax.set_ylabel('Count')
-    st.pyplot(fig)
+    with tab4:
+        c1, c2 = st.columns(2)
+        fig = px.histogram(view.dropna(subset=["minutes"]), x="minutes", nbins=50, title="Movie length (minutes)")
+        c1.plotly_chart(fig, width="stretch")
+        seasons = view["seasons"].dropna().astype(int).value_counts().sort_index()
+        fig = px.bar(x=seasons.index, y=seasons.values, labels={"x": "seasons", "y": "TV shows"},
+                     title="Number of seasons per TV show")
+        c2.plotly_chart(fig, width="stretch")
+        c1, c2 = st.columns(2)
+        directors = nd.explode_counts(view, "directors", 10).sort_values()
+        c1.plotly_chart(px.bar(x=directors.values, y=directors.index, orientation="h",
+                               labels={"x": "titles", "y": ""}, title="Directors with the most titles"), width="stretch")
+        actors = nd.explode_counts(view, "cast_list", 10).sort_values()
+        c2.plotly_chart(px.bar(x=actors.values, y=actors.index, orientation="h",
+                               labels={"x": "titles", "y": ""}, title="Most frequent cast members"), width="stretch")
 
-# Display selected visualization
-if options == 'Content Type Count':
-    plot_content_type_count()
-elif options == 'Rating Distribution':
-    plot_rating_distribution()
-elif options == 'Movies Released Each Year':
-    plot_movies_released_each_year()
-elif options == 'Top Directors by Average Rating':
-    plot_top_directors()
-elif options == 'Top Genres':
-    plot_top_genres()
-elif options == 'Content Additions by Year':
-    plot_content_additions_by_year()
-elif options == 'Top Actors':
-    plot_top_actors()
-elif options == 'Duration Distribution':
-    plot_duration_distribution()
-elif options == 'Content Types by Year':
-    plot_content_types_by_year()
+
+if __name__ == "__main__":
+    main()
