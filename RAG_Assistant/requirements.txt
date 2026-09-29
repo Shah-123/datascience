@@ -1,0 +1,13 @@
+# Core (everything needed to run the assistant and the evaluation harness offline)
+numpy>=1.26
+scikit-learn>=1.3
+pyyaml>=6.0
+snowballstemmer>=2.2
+matplotlib>=3.7   # report figures
+streamlit>=1.35   # web app (also installs pandas)
+pandas>=2.0
+
+# Optional
+# anthropic>=1.0            # provider "anthropic"
+# pypdf>=4.0                # ingest PDF documents
+# sentence-transformers     # real embedding models via rag_assistant.retrievers.DenseRetriever

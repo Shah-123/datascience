@@ -10,6 +10,14 @@ This repository contains Jupyter Notebooks and Python scripts related to data sc
 - **Python Scripts (.py):**  
   Utility scripts and supporting code for data processing, cleaning, and visualization.
 
+## ⭐ Featured project: RAG assistant with an evaluation harness
+
+[`RAG_Assistant/`](RAG_Assistant/) is an end-to-end retrieval-augmented Q&A system over a university handbook, built around
+one idea: **most people build a chatbot, few measure one.** It ships with a golden question set, retrieval metrics
+(Hit@k, MRR, nDCG), faithfulness and hallucination scoring, abstention accuracy, nested cross-validation with bootstrap
+confidence intervals, ablations, a failure taxonomy, CI quality gates, a Streamlit app, and tests. It runs fully offline and
+plugs into Anthropic, ModelScope or any OpenAI-compatible LLM. See [`RAG_Assistant/README.md`](RAG_Assistant/README.md).
+
 ## 🚀 Features
 
 - End-to-end data science workflows

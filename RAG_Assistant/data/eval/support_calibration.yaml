@@ -1,0 +1,193 @@
+# Hand-labelled examples for measuring the deterministic faithfulness scorer (rag_assistant/evaluation/support.py).
+# label: faithful   = every claim in `answer` is supported by `context`
+#        unfaithful = at least one claim is NOT supported
+# category names the failure mode being probed. Items marked expected_miss: true are cases the lexical scorer
+# is KNOWN to get wrong; they are kept on purpose so the report states its blind spots instead of hiding them.
+
+# ------------------------------------------------------------------ faithful
+- id: s01
+  category: verbatim
+  label: faithful
+  context: ["A late payment fee of $75 is charged when the balance is not paid in full by the due date, unless the student is enrolled in a payment plan."]
+  answer: "A late payment fee of $75 is charged when the balance is not paid in full by the due date. [1]"
+
+- id: s02
+  category: paraphrase_same_numbers
+  label: faithful
+  context: ["Graduate students may borrow up to 50 items for 60 days each, with three renewals."]
+  answer: "Graduate students can borrow up to 50 items, each for 60 days."
+
+- id: s03
+  category: two_sentence_synthesis
+  label: faithful
+  context: ["Undergraduates who want to register for more than 18 credits (an overload) need written approval from their academic dean and must hold a cumulative GPA of at least 3.3. No undergraduate may register for more than 21 credits in any term, regardless of GPA."]
+  answer: "To take more than 18 credits you need your dean's written approval and a cumulative GPA of at least 3.3, and nobody may exceed 21 credits in a term."
+
+- id: s04
+  category: number_formatting
+  label: faithful
+  context: ["For the 2026-27 academic year, undergraduate tuition is $1,150 per credit."]
+  answer: "Undergraduate tuition is 1150 dollars per credit."
+
+- id: s05
+  category: yes_no_lead
+  label: faithful
+  context: ["The only pets allowed are fish in tanks of up to 20 gallons. Service animals and approved emotional support animals are permitted with an accommodation letter from the Office of Accessibility Services."]
+  answer: "No. The only pets allowed are fish in tanks of up to 20 gallons."
+
+- id: s06
+  category: bullet_list
+  label: faithful
+  context: ["Undergraduates who withdraw from a course between week 3 and the end of week 10 receive a grade of W. Graduate students may withdraw with a W between week 3 and the end of week 12."]
+  answer: "- Undergraduates can withdraw with a W between week 3 and the end of week 10.\n- Graduate students can withdraw with a W between week 3 and the end of week 12."
+
+- id: s07
+  category: hedged_intro
+  label: faithful
+  context: ["Passwords expire every 180 days, and multi-factor authentication is required for all accounts."]
+  answer: "According to the IT policy, passwords expire every 180 days. [1]"
+
+- id: s08
+  category: negation_preserved
+  label: faithful
+  context: ["Federal Work-Study is available to U.S. citizens and permanent residents only. International students are not eligible for Federal Work-Study."]
+  answer: "No, international students are not eligible for Federal Work-Study."
+
+- id: s09
+  category: multi_passage
+  label: faithful
+  context: ["A financial hold is placed on any account whose unpaid balance exceeds $250.", "Students clear a financial hold by paying the balance at the Bursar's Office or online through the student portal."]
+  answer: "A financial hold is placed when the unpaid balance exceeds $250. You clear it by paying the balance at the Bursar's Office or through the student portal."
+
+- id: s10
+  category: table_row
+  label: faithful
+  context: ["Week of term Weeks 4-5: Tuition refunded 25%."]
+  answer: "Tuition is refunded at 25% in weeks 4-5."
+
+- id: s11
+  category: synonym_paraphrase
+  expected_miss: true   # right meaning, different words -> lexical overlap too low; a known false alarm
+  label: faithful
+  context: ["The first room lockout each term is free; each additional lockout costs $15."]
+  answer: "You are not billed for your initial lock-out in a semester, but every further incident is $15."
+
+- id: s12
+  category: synonym_paraphrase
+  expected_miss: true
+  label: faithful
+  context: ["Residence halls close 24 hours after a resident's last final examination in the fall term."]
+  answer: "Dorms shut a day after your final exam of the autumn semester."
+
+- id: s13
+  category: cited_answer
+  label: faithful
+  context: ["Early Action applications are due November 1, and decisions are released by December 15."]
+  answer: "Early Action applications are due November 1 [1], and decisions come out by December 15 [1]."
+
+- id: s14
+  category: conditional_answer
+  label: faithful
+  context: ["A student is in good standing when the cumulative GPA is at least 2.0 (undergraduate) or 3.0 (graduate)."]
+  answer: "Good standing requires a cumulative GPA of at least 2.0 for undergraduates and 3.0 for graduate students."
+
+# ------------------------------------------------------------------ unfaithful
+- id: u01
+  category: wrong_number
+  label: unfaithful
+  context: ["A late payment fee of $75 is charged when the balance is not paid in full by the due date."]
+  answer: "A late payment fee of $85 is charged when the balance is not paid in full by the due date."
+
+- id: u02
+  category: invented_sentence
+  label: unfaithful
+  context: ["The housing deposit is fully refundable if the student cancels by June 1."]
+  answer: "The housing deposit is fully refundable if the student cancels by June 1. Students must also submit a signed parental consent form to the Dean of Students."
+
+- id: u03
+  category: negation_flip
+  label: unfaithful
+  context: ["Federal Work-Study is available to U.S. citizens and permanent residents only. International students are not eligible for Federal Work-Study."]
+  answer: "International students are eligible for Federal Work-Study."
+
+- id: u04
+  category: outside_knowledge
+  label: unfaithful
+  context: ["The library is open Monday to Thursday from 7 a.m. to 1 a.m., Friday from 7 a.m. to 9 p.m."]
+  answer: "The library was founded in 1901 and is one of the largest university libraries in the region."
+
+- id: u05
+  category: wrong_date
+  label: unfaithful
+  context: ["Fall term bills are issued on July 15 and are due August 15."]
+  answer: "Fall term bills are issued on July 15 and are due August 20."
+
+- id: u06
+  category: fabricated_condition
+  expected_miss: true   # a short invented clause inside a long sentence keeps overlap above threshold
+  label: unfaithful
+  context: ["Undergraduates who want to register for more than 18 credits need written approval from their academic dean and must hold a cumulative GPA of at least 3.3."]
+  answer: "Undergraduates who want to register for more than 18 credits need written approval from their academic dean, a cumulative GPA of at least 3.3, and a letter from their parents."
+
+- id: u07
+  category: wrong_number_in_table
+  label: unfaithful
+  context: ["Week of term Weeks 4-5: Tuition refunded 25%."]
+  answer: "Tuition is refunded at 50% in weeks 4-5."
+
+- id: u08
+  category: unrelated
+  label: unfaithful
+  context: ["Passwords expire every 180 days, and multi-factor authentication is required for all accounts."]
+  answer: "The Student Health Center offers free flu vaccinations every October."
+
+- id: u09
+  category: partially_supported
+  label: unfaithful
+  context: ["Graduate students may borrow up to 50 items for 60 days each, with three renewals."]
+  answer: "Graduate students may borrow up to 50 items for 60 days each. Overdue graduate items are never fined."
+
+- id: u10
+  category: derived_number_not_in_context
+  label: unfaithful
+  context: ["A traditional double costs $4,200, a suite-style double costs $4,900, a single room costs $5,600, and an apartment costs $6,300."]
+  answer: "A traditional double and a suite together cost $9,300 per term."
+
+- id: u11
+  category: negation_flip
+  label: unfaithful
+  context: ["Only students with sophomore standing or above may buy a resident permit."]
+  answer: "First-year students do not need sophomore standing to buy a resident permit."
+
+- id: u12
+  category: swapped_entities
+  expected_miss: true   # right numbers attached to the wrong group; both groups sit in one window
+  label: unfaithful
+  context: ["Undergraduates who withdraw from a course between week 3 and the end of week 10 receive a grade of W. Graduate students may withdraw with a W between week 3 and the end of week 12."]
+  answer: "Graduate students may withdraw with a W between week 3 and the end of week 10."
+
+- id: u13
+  category: unit_change
+  expected_miss: true   # 'hours' for 'days': one word differs, overlap stays above threshold
+  label: unfaithful
+  context: ["Graduate students may borrow up to 50 items for 60 days each, with three renewals."]
+  answer: "Graduate students may borrow up to 50 items for 60 hours each, with three renewals."
+
+- id: u14
+  category: quantifier_change
+  expected_miss: true   # 'at least' vs 'at most'
+  label: unfaithful
+  context: ["A thesis committee has at least three members, and at least two of them must come from the student's home department."]
+  answer: "A thesis committee has at most three members, and at least two of them must come from the student's home department."
+
+- id: u15
+  category: invented_policy
+  label: unfaithful
+  context: ["Each student receives 8 free individual counseling sessions per academic year, and each additional session costs $20."]
+  answer: "Each student receives 8 free individual counseling sessions per academic year. Sessions used in the summer are billed to the student's parents."
+
+- id: u16
+  category: wrong_entity_number
+  label: unfaithful
+  context: ["Research Assistants receive a stipend of $22,000 for the 9-month academic year, and Teaching Assistants receive $18,500."]
+  answer: "Teaching Assistants receive a stipend of $25,000 for the 9-month academic year."

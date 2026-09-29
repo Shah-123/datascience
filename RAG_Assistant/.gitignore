@@ -1,0 +1,12 @@
+# secrets - never commit API keys
+.env
+.env.*
+!.env.example
+
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.cache/
+# downloaded embedding weights live in ~/.cache/rag_assistant, but never commit a stray copy
+*.gz

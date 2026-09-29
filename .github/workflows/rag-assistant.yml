@@ -1,0 +1,51 @@
+name: RAG Assistant
+
+# Only runs when this project (or this workflow) changes.
+on:
+  push:
+    paths: ["RAG_Assistant/**", ".github/workflows/rag-assistant.yml"]
+  pull_request:
+    paths: ["RAG_Assistant/**", ".github/workflows/rag-assistant.yml"]
+
+defaults:
+  run:
+    working-directory: RAG_Assistant
+
+jobs:
+  test-and-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: RAG_Assistant/requirements-dev.txt
+
+      - name: Install
+        run: pip install -r requirements-dev.txt
+
+      - name: Unit and integration tests
+        run: python -m pytest -q
+
+      - name: Golden set is consistent with the corpus
+        run: python -m rag_assistant check-data
+
+      - name: Faithfulness scorer still matches hand labels
+        run: python -m rag_assistant calibrate
+
+      # Cache the GloVe vectors only if the tuned configuration uses them.
+      - name: Restore embedding cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/rag_assistant
+          key: glove-wiki-gigaword-100
+
+      - name: Fetch embeddings (no-op when cached)
+        run: python -m rag_assistant fetch-embeddings
+
+      - name: Quality gate (fails if retrieval or answer quality regresses)
+        run: |
+          python -m rag_assistant eval --gate --out reports/ci_eval
+          cat reports/ci_eval/summary.md >> "$GITHUB_STEP_SUMMARY"

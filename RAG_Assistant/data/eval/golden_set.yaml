@@ -1,0 +1,635 @@
+# Golden evaluation set for the Halcyon Ridge University handbook corpus (synthetic).
+#
+# Each item:
+#   type      factual | paraphrase | conditional | multi_hop | unanswerable_near | unanswerable_off
+#   answer    reference answer (used for token-F1)
+#   facts     list of required facts; each fact is a list of acceptable spellings. ALL facts must appear.
+#   evidence  verbatim phrases from the corpus that a retriever must surface. Each must occur
+#             exactly once in the corpus (enforced by tests/test_data_integrity.py).
+#   split     dev | test. If omitted, items alternate dev/test within each type. Tune on dev only;
+#             report on test.
+#
+# unanswerable_near = same topic as the corpus but the fact is NOT in it (hard negatives).
+# unanswerable_off  = unrelated to the corpus (easy negatives).
+
+# ------------------------------------------------------------------ factual (lexical overlap high)
+- id: f01
+  type: factual
+  question: "What cumulative GPA is required to register for more than 18 credits?"
+  answer: "A cumulative GPA of at least 3.3, plus written approval from the academic dean."
+  facts: [["3.3"]]
+  evidence: ["must hold a cumulative GPA of at least 3.3"]
+
+- id: f02
+  type: factual
+  question: "What is the maximum number of credits an undergraduate may register for in any term?"
+  answer: "No undergraduate may register for more than 21 credits in any term."
+  facts: [["21 credits"]]
+  evidence: ["No undergraduate may register for more than 21 credits in any term"]
+
+- id: f03
+  type: factual
+  question: "Within how many weeks after the start of the next regular term must an Incomplete grade be resolved?"
+  answer: "Within 8 weeks after the start of the next regular term."
+  facts: [["8 weeks"]]
+  evidence: ["must be resolved within 8 weeks after the start of the next regular term"]
+
+- id: f04
+  type: factual
+  question: "What is the late payment fee?"
+  answer: "A late payment fee of $75 is charged when the balance is not paid by the due date."
+  facts: [["$75"]]
+  evidence: ["A late payment fee of $75 is charged"]
+
+- id: f05
+  type: factual
+  question: "How much is the enrollment deposit for admitted undergraduates?"
+  answer: "A non-refundable enrollment deposit of $300, due on or before May 1."
+  facts: [["$300"]]
+  evidence: ["non-refundable enrollment deposit of $300"]
+
+- id: f06
+  type: factual
+  question: "When is the Early Action application deadline?"
+  answer: "Early Action applications are due November 1."
+  facts: [["november 1"]]
+  evidence: ["Early Action applications are due November 1"]
+
+- id: f07
+  type: factual
+  question: "How much does a printed transcript cost?"
+  answer: "A printed transcript costs $10."
+  facts: [["$10"]]
+  evidence: ["a printed transcript costs $10"]
+
+- id: f08
+  type: factual
+  question: "How many free individual counseling sessions does each student receive per academic year?"
+  answer: "Each student receives 8 free individual counseling sessions per academic year."
+  facts: [["8 free"]]
+  evidence: ["Each student receives 8 free individual counseling sessions per academic year"]
+
+- id: f09
+  type: factual
+  question: "What is the daily fine for an overdue library book?"
+  answer: "Overdue books accrue a fine of $0.40 per day per item, capped at $25 per item."
+  facts: [["$0.40"]]
+  evidence: ["Overdue books accrue a fine of $0.40 per day per item"]
+
+- id: f10
+  type: factual
+  question: "What stipend does a Research Assistant receive?"
+  answer: "Research Assistants receive a stipend of $22,000 for the 9-month academic year."
+  facts: [["$22,000"]]
+  evidence: ["Research Assistants receive a stipend of $22,000"]
+
+- id: f11
+  type: factual
+  question: "How many credits does a bachelor's degree require?"
+  answer: "At least 120 credits."
+  facts: [["120 credits"]]
+  evidence: ["A bachelor's degree requires at least 120 credits"]
+
+- id: f12
+  type: factual
+  question: "What cumulative GPA earns summa cum laude honors?"
+  answer: "A cumulative GPA of 3.90 or higher."
+  facts: [["3.90"]]
+  evidence: ["summa cum laude for 3.90 or higher"]
+
+- id: f13
+  type: factual
+  question: "How much is the housing deposit?"
+  answer: "A housing deposit of $400 is required to secure a room."
+  facts: [["$400"]]
+  evidence: ["A housing deposit of $400 is required"]
+
+- id: f14
+  type: factual
+  question: "How many free printing pages does each student get per term?"
+  answer: "A free allowance of 500 pages per term."
+  facts: [["500 pages"]]
+  evidence: ["free allowance of 500 pages per term"]
+
+- id: f15
+  type: factual
+  question: "How much is the Ridge Scholar Award worth per year?"
+  answer: "The Ridge Scholar Award is worth $6,000 per year."
+  facts: [["$6,000"]]
+  evidence: ["The Ridge Scholar Award is worth $6,000 per year"]
+
+- id: f16
+  type: factual
+  question: "How much does the Student Health Insurance Plan cost per year?"
+  answer: "SHIP costs $1,900 per year."
+  facts: [["$1,900"]]
+  evidence: ["Student Health Insurance Plan (SHIP), which costs $1,900 per year"]
+
+- id: f17
+  type: factual
+  question: "How many business days does an instructor have to report a suspected academic integrity violation?"
+  answer: "Within 5 business days of discovering it."
+  facts: [["5 business days"]]
+  evidence: ["within 5 business days of discovering it"]
+
+- id: f18
+  type: factual
+  question: "What is the undergraduate application fee?"
+  answer: "The undergraduate application fee is $60, waived for applicants who qualify for a fee waiver."
+  facts: [["$60"]]
+  evidence: ["The undergraduate application fee is $60"]
+
+- id: f19
+  type: factual
+  question: "What is the citation fine for parking without a valid permit?"
+  answer: "Parking without a valid permit results in a $50 citation."
+  facts: [["$50"]]
+  evidence: ["Parking without a valid permit results in a $50 citation"]
+
+- id: f20
+  type: factual
+  question: "How many credits does the MS in Data Science require?"
+  answer: "The MS in Data Science requires 36 credits."
+  facts: [["36 credits"]]
+  evidence: ["except for the MS in Data Science, which requires 36 credits"]
+
+# ------------------------------------------------------------------ paraphrase (little word overlap)
+- id: p01
+  type: paraphrase
+  question: "What average grade do I need in order to take a heavier course load than the normal maximum?"
+  answer: "A cumulative GPA of at least 3.3 and written approval from your academic dean."
+  facts: [["3.3"]]
+  evidence: ["must hold a cumulative GPA of at least 3.3"]
+
+- id: p02
+  type: paraphrase
+  question: "How much of my fees do I get back if I quit a class during the fourth week?"
+  answer: "Tuition is refunded at 25% for weeks 4-5."
+  facts: [["25%"]]
+  evidence: ["Weeks 4-5: Tuition refunded 25%"]
+
+- id: p03
+  type: paraphrase
+  question: "What happens to a temporary placeholder mark if I never finish the outstanding work in time?"
+  answer: "An unresolved Incomplete automatically becomes an F."
+  facts: [["becomes an f"]]
+  evidence: ["Any Incomplete that is not resolved by then automatically becomes an F"]
+
+- id: p04
+  type: paraphrase
+  question: "By what date must my autumn semester bill be settled?"
+  answer: "Fall term bills are due August 15."
+  facts: [["august 15"]]
+  evidence: ["Fall term bills are issued on July 15 and are due August 15"]
+
+- id: p05
+  type: paraphrase
+  question: "What does it cost to replace a lost dorm door key?"
+  answer: "Replacing a lost room key requires a lock change and costs $150."
+  facts: [["$150"]]
+  evidence: ["Replacing a lost room key requires a lock change and costs $150"]
+
+- id: p06
+  type: paraphrase
+  question: "By when must I tell the registrar that I plan to finish my degree in the spring semester?"
+  answer: "Apply to graduate by February 1 for May graduation."
+  facts: [["february 1"]]
+  evidence: ["by February 1 for May graduation"]
+
+- id: p07
+  type: paraphrase
+  question: "Am I allowed to keep a cat in my residence hall room?"
+  answer: "No. The only pets allowed are fish in tanks of up to 20 gallons (service and approved emotional support animals are allowed)."
+  facts: [["fish"]]
+  evidence: ["The only pets allowed are fish in tanks of up to 20 gallons"]
+
+- id: p08
+  type: paraphrase
+  question: "How long may a master's student keep a book checked out from the library?"
+  answer: "Graduate students may borrow items for 60 days each, with three renewals."
+  facts: [["60 days"]]
+  evidence: ["Graduate students may borrow up to 50 items for 60 days each"]
+
+- id: p09
+  type: paraphrase
+  question: "What hourly wage do federally funded campus jobs pay?"
+  answer: "Federal Work-Study pays $16.50 per hour."
+  facts: [["$16.50"]]
+  evidence: ["It pays $16.50 per hour"]
+
+- id: p10
+  type: paraphrase
+  question: "How soon after arriving must a newly arrived foreign student report to the international office?"
+  answer: "Within 15 days of the program start date printed on the I-20."
+  facts: [["15 days"]]
+  evidence: ["within 15 days of the program start date printed on the I-20"]
+
+- id: p11
+  type: paraphrase
+  question: "How long do I have to reply once I am accused of copying someone's work?"
+  answer: "The student has 7 business days to respond."
+  facts: [["7 business days"]]
+  evidence: ["the student has 7 business days to respond"]
+
+- id: p12
+  type: paraphrase
+  question: "What is the earliest date I can request a place to live on campus?"
+  answer: "The housing application opens on March 1."
+  facts: [["march 1"]]
+  evidence: ["The housing application opens on March 1"]
+
+- id: p13
+  type: paraphrase
+  question: "How often must I change my campus network login secret?"
+  answer: "Passwords expire every 180 days."
+  facts: [["180 days"]]
+  evidence: ["Passwords expire every 180 days"]
+
+- id: p14
+  type: paraphrase
+  question: "For how many hours per day can I reserve a group study space?"
+  answer: "Group study rooms can be booked for up to 3 hours per day."
+  facts: [["3 hours"]]
+  evidence: ["can be booked for up to 3 hours per day"]
+
+- id: p15
+  type: paraphrase
+  question: "What English test scores do foreign applicants to a master's program need?"
+  answer: "A TOEFL iBT score of 90 or an IELTS score of 7.0."
+  facts: [["90"], ["7.0"]]
+  evidence: ["Graduate applicants whose first language is not English need a TOEFL iBT score of 90 or an IELTS score of 7.0"]
+
+- id: p16
+  type: paraphrase
+  question: "How long is a student kicked out of the university for failing to recover from probation?"
+  answer: "The student is dismissed for one year and may then apply for readmission."
+  facts: [["one year"]]
+  evidence: ["is dismissed for one year"]
+
+- id: p17
+  type: paraphrase
+  question: "Is it okay to use ChatGPT on my homework?"
+  answer: "No, generative AI is prohibited on graded work unless the syllabus explicitly permits it."
+  facts: [["prohibited"], ["syllabus"]]
+  evidence: ["is prohibited on graded work unless the course syllabus explicitly permits it"]
+
+- id: p18
+  type: paraphrase
+  question: "Until what time does the free late-night ride service operate?"
+  answer: "The Safe-Ride shuttle runs every night from 6 p.m. to 2 a.m."
+  facts: [["2 am"]]
+  evidence: ["The free Safe-Ride shuttle runs every night from 6 p.m. to 2 a.m."]
+
+- id: p19
+  type: paraphrase
+  question: "What permission must a student on a visa get before reducing their study load below the minimum?"
+  answer: "A Reduced Course Load (RCL) authorization from the ISSO."
+  facts: [["reduced course load"]]
+  evidence: ["must obtain a Reduced Course Load (RCL) authorization from the ISSO before the drop is processed"]
+
+- id: p20
+  type: paraphrase
+  question: "How many times may a doctoral student sit the qualifying exam?"
+  answer: "At most twice."
+  facts: [["twice"]]
+  evidence: ["they may attempt it at most twice"]
+
+# ------------------------------------------------------------------ conditional (depends on a category)
+- id: c01
+  type: conditional
+  question: "Until which week can a graduate student withdraw from a course and receive a W?"
+  answer: "Graduate students may withdraw with a W between week 3 and the end of week 12."
+  facts: [["week 12"]]
+  evidence: ["Graduate students may withdraw with a W between week 3 and the end of week 12"]
+
+- id: c02
+  type: conditional
+  question: "Until which week can an undergraduate withdraw from a course and receive a W?"
+  answer: "Undergraduates may withdraw with a W between week 3 and the end of week 10."
+  facts: [["week 10"]]
+  evidence: ["Undergraduates who withdraw from a course between week 3 and the end of week 10 receive a grade of W"]
+
+- id: c03
+  type: conditional
+  question: "What cumulative GPA counts as good standing for a graduate student?"
+  answer: "At least 3.0 for graduate students (2.0 for undergraduates)."
+  facts: [["3.0"]]
+  evidence: ["at least 2.0 (undergraduate) or 3.0 (graduate)"]
+
+- id: c04
+  type: conditional
+  question: "What TOEFL iBT score do undergraduate applicants need if English is not their first language?"
+  answer: "A TOEFL iBT score of 85."
+  facts: [["85"]]
+  evidence: ["a TOEFL iBT score of 85"]
+
+- id: c05
+  type: conditional
+  question: "What is the tuition per credit for the MS in Data Science?"
+  answer: "The MS in Data Science has a special rate of $1,650 per credit."
+  facts: [["$1,650"]]
+  evidence: ["The MS in Data Science has a special rate of $1,650 per credit"]
+
+- id: c06
+  type: conditional
+  question: "How many items can a graduate student borrow from the library at one time?"
+  answer: "Graduate students may borrow up to 50 items."
+  facts: [["50 items"]]
+  evidence: ["Graduate students may borrow up to 50 items"]
+
+- id: c07
+  type: conditional
+  question: "How many items can an undergraduate borrow from the library at one time?"
+  answer: "Undergraduates may borrow up to 25 items at a time for 28 days each."
+  facts: [["25 items"]]
+  evidence: ["Undergraduates may borrow up to 25 items at a time for 28 days each"]
+
+- id: c08
+  type: conditional
+  question: "How long is the I-20 travel signature valid for a student who is on OPT?"
+  answer: "6 months for students on OPT (12 months otherwise)."
+  facts: [["6 months"]]
+  evidence: ["A signature is valid for 12 months, or 6 months for students on OPT"]
+
+- id: c09
+  type: conditional
+  question: "What is the deadline to waive the student health insurance plan for the spring term?"
+  answer: "January 15."
+  facts: [["january 15"]]
+  evidence: ["proof of insurance by August 15 for the fall term or January 15 for the spring term"]
+
+- id: c10
+  type: conditional
+  question: "How much is the tuition per term for a full-time undergraduate taking 15 credits?"
+  answer: "Undergraduates registered for 12 to 18 credits pay a flat rate of $13,800 per term."
+  facts: [["$13,800"]]
+  evidence: ["Undergraduates who register for 12 to 18 credits pay a flat rate of $13,800 per term"]
+
+- id: c11
+  type: conditional
+  question: "Are international students eligible for Federal Work-Study?"
+  answer: "No, international students are not eligible for Federal Work-Study."
+  facts: [["not eligible"]]
+  evidence: ["International students are not eligible for Federal Work-Study"]
+
+- id: c12
+  type: conditional
+  question: "Can a first-year student buy a resident parking permit for Lot R?"
+  answer: "No, only students with sophomore standing or above may buy a resident permit."
+  facts: [["sophomore"]]
+  evidence: ["Only students with sophomore standing or above may buy a resident permit"]
+
+# ------------------------------------------------------------------ multi_hop (needs 2+ passages)
+- id: m01
+  type: multi_hop
+  question: "I withdrew from a course in week 7 as an undergraduate. Will it appear on my transcript, and do I get any tuition back?"
+  answer: "It appears as a W on the transcript, and no tuition is refunded because refunds are 0% from week 6 onward."
+  facts: [["w"], ["0%", "no tuition refund"]]
+  evidence: ["Week 6 and later: Tuition refunded 0%", "receive a grade of W"]
+
+- id: m02
+  type: multi_hop
+  question: "My account has an unpaid balance of $400. Can I register for classes, and how do I fix that?"
+  answer: "No - a financial hold is placed when the balance exceeds $250; pay the balance at the Bursar's Office or the student portal to clear it."
+  facts: [["250"], ["bursar", "student portal"]]
+  evidence: ["A financial hold is placed on any account whose unpaid balance exceeds $250", "Students clear a financial hold by paying the balance at the Bursar's Office"]
+
+- id: m03
+  type: multi_hop
+  question: "How many credits must an F-1 graduate student take to stay full-time, and can an online course count toward that?"
+  answer: "At least 9 credits; only one online course worth up to 3 credits may count."
+  facts: [["9 credits"], ["one online course"]]
+  evidence: ["at least 12 credits for undergraduates and at least 9 credits for graduate students", "Only one online course, worth up to 3 credits, may count"]
+
+- id: m04
+  type: multi_hop
+  question: "What are the weekly hour limits for a work-study job versus an on-campus job held by an F-1 student?"
+  answer: "Federal Work-Study allows at most 15 hours per week; F-1 students may work up to 20 hours per week on campus."
+  facts: [["15 hours"], ["20 hours"]]
+  evidence: ["students may work at most 15 hours per week while classes are in session", "F-1 students may work on campus for up to 20 hours per week while classes are in session"]
+
+- id: m05
+  type: multi_hop
+  question: "Which mandatory fees does an international student pay each term besides tuition?"
+  answer: "Technology fee $180, student activity fee $95, health services fee $240 and the International Student Services fee $300."
+  facts: [["$180"], ["$95"], ["$240"], ["$300"]]
+  evidence: ["a technology fee of $180, a student activity fee of $95, and a health services fee of $240", "International students pay an International Student Services fee of $300 per term"]
+
+- id: m06
+  type: multi_hop
+  question: "If I take a medical leave in week 8 as an undergraduate, how much tuition is refunded and what grades do I get?"
+  answer: "50% of tuition is refunded for weeks 6 to 10, and you receive a W in all courses."
+  facts: [["50%"], ["w"]]
+  evidence: ["Tuition is refunded at 100% through week 5 and at 50% for weeks 6 to 10", "Students on approved medical leave receive a W in all courses"]
+
+- id: m07
+  type: multi_hop
+  question: "Are there two separate deposits for a new on-campus first-year student, and how much is each?"
+  answer: "Yes: a $300 enrollment deposit paid to Admissions and a $400 housing deposit."
+  facts: [["$300"], ["$400"]]
+  evidence: ["non-refundable enrollment deposit of $300", "A housing deposit of $400 is required"]
+
+- id: m08
+  type: multi_hop
+  question: "By when must a student who plans to finish in December apply to graduate, and when can they attend commencement?"
+  answer: "Apply by October 1; December graduates take part in the following May ceremony."
+  facts: [["october 1"], ["following may"]]
+  evidence: ["October 1 for December graduation", "December graduates may take part in the following May ceremony"]
+
+- id: m09
+  type: multi_hop
+  question: "How much transfer credit does HRU accept, and does it count toward the residency requirement?"
+  answer: "Up to 60 credits from two-year institutions and 75 in total; transfer credit does not count toward residency."
+  facts: [["75"], ["not toward the residency requirement"]]
+  evidence: ["accepts up to 60 credits from accredited two-year institutions and up to 75 credits in total", "Transfer credit counts toward the 120 credits but not toward the residency requirement"]
+
+- id: m10
+  type: multi_hop
+  question: "A Ridge Scholar's cumulative GPA drops to 2.9. Are they on academic probation, and is the scholarship at risk?"
+  answer: "Not on probation (good standing needs 2.0), but 2.9 is below the 3.0 renewal GPA, so the scholar gets one probationary term to recover."
+  facts: [["2.0"], ["one probationary term"]]
+  evidence: ["A scholar who falls below the renewal GPA is given one probationary term to recover", "A student is in good standing when the cumulative GPA is at least 2.0"]
+
+# ------------------------------------------------------------------ unanswerable_near (same topic, fact absent)
+- id: un01
+  type: unanswerable_near
+  question: "What is the fee for ordering a duplicate diploma?"
+  answer: ""
+  facts: []
+  evidence: []
+
+- id: un02
+  type: unanswerable_near
+  question: "How many pages must a master's thesis be?"
+  answer: ""
+  facts: []
+  evidence: []
+
+- id: un03
+  type: unanswerable_near
+  question: "What is the application deadline for the Provost Scholarship?"
+  answer: ""
+  facts: []
+  evidence: []
+
+- id: un04
+  type: unanswerable_near
+  question: "How much does a replacement parking permit cost?"
+  answer: ""
+  facts: []
+  evidence: []
+
+- id: un05
+  type: unanswerable_near
+  question: "What does an official transcript sent by express courier cost?"
+  answer: ""
+  facts: []
+  evidence: []
+
+- id: un06
+  type: unanswerable_near
+  question: "Does the Student Health Center offer dental care?"
+  answer: ""
+  facts: []
+  evidence: []
+
+- id: un07
+  type: unanswerable_near
+  question: "What interest rate does HRU charge on student loans?"
+  answer: ""
+  facts: []
+  evidence: []
+
+- id: un08
+  type: unanswerable_near
+  question: "How fast is the campus Wi-Fi connection?"
+  answer: ""
+  facts: []
+  evidence: []
+
+- id: un09
+  type: unanswerable_near
+  question: "How many people may attend a party in a residence hall common room?"
+  answer: ""
+  facts: []
+  evidence: []
+
+- id: un10
+  type: unanswerable_near
+  question: "How many books can a faculty member borrow from the library at one time?"
+  answer: ""
+  facts: []
+  evidence: []
+
+- id: un11
+  type: unanswerable_near
+  question: "How much does it cost to take a course at another university through cross-registration?"
+  answer: ""
+  facts: []
+  evidence: []
+
+- id: un12
+  type: unanswerable_near
+  question: "What GPA is needed to join an honor society?"
+  answer: ""
+  facts: []
+  evidence: []
+
+- id: un13
+  type: unanswerable_near
+  question: "How long does the government take to process an OPT application?"
+  answer: ""
+  facts: []
+  evidence: []
+
+- id: un14
+  type: unanswerable_near
+  question: "What is the penalty for drinking alcohol in a first-year residence hall?"
+  answer: ""
+  facts: []
+  evidence: []
+
+- id: un15
+  type: unanswerable_near
+  question: "Is there family housing for students who have children?"
+  answer: ""
+  facts: []
+  evidence: []
+
+- id: un16
+  type: unanswerable_near
+  question: "What is the maximum length of a doctoral dissertation?"
+  answer: ""
+  facts: []
+  evidence: []
+
+# ------------------------------------------------------------------ unanswerable_off (unrelated)
+- id: uo01
+  type: unanswerable_off
+  question: "Who won the 2022 FIFA World Cup?"
+  answer: ""
+  facts: []
+  evidence: []
+
+- id: uo02
+  type: unanswerable_off
+  question: "What is the capital of Australia?"
+  answer: ""
+  facts: []
+  evidence: []
+
+- id: uo03
+  type: unanswerable_off
+  question: "How do I bake sourdough bread?"
+  answer: ""
+  facts: []
+  evidence: []
+
+- id: uo04
+  type: unanswerable_off
+  question: "What is the boiling point of water at sea level?"
+  answer: ""
+  facts: []
+  evidence: []
+
+- id: uo05
+  type: unanswerable_off
+  question: "Write a Python function that reverses a string."
+  answer: ""
+  facts: []
+  evidence: []
+
+- id: uo06
+  type: unanswerable_off
+  question: "What is the current price of Bitcoin?"
+  answer: ""
+  facts: []
+  evidence: []
+
+- id: uo07
+  type: unanswerable_off
+  question: "Who painted the Mona Lisa?"
+  answer: ""
+  facts: []
+  evidence: []
+
+- id: uo08
+  type: unanswerable_off
+  question: "Explain how photosynthesis works."
+  answer: ""
+  facts: []
+  evidence: []
+
+- id: uo09
+  type: unanswerable_off
+  question: "What is the weather forecast for tomorrow?"
+  answer: ""
+  facts: []
+  evidence: []
+
+- id: uo10
+  type: unanswerable_off
+  question: "Recommend a good movie to watch this weekend."
+  answer: ""
+  facts: []
+  evidence: []
